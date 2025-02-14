@@ -18,6 +18,7 @@ install_requires = [
     "brotli_asgi",
     "pygeofilter>=0.2",
     "pypgstac>=0.8,<0.10",
+    "boto3",
 ]
 
 extra_reqs = {
