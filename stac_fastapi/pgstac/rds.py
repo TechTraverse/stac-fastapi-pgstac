@@ -8,9 +8,9 @@ from typing import Tuple, Union
 import boto3
 from pydantic import PostgresDsn
 
-from tipg.settings import PostgresSettings, RDSSettings
+from stac_fastapi.pgstac.config import Settings, RDSSettings
 
-logger = logging.getLogger("tipg.rds")
+logger = logging.getLogger("stac_fastapi_pgstac.rds")
 
 
 _CA_BUNDLE_URL = "https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem"
@@ -20,12 +20,12 @@ _CA_BUNDLE_PATH = (
 
 
 def rds_connect_args(
-    pg_settings: PostgresSettings, rds_settings: RDSSettings
-) -> Tuple[PostgresSettings, dict]:
-    """Gather connections parameters and return them as a tuple of PostgresSettings
+    pg_settings: Settings, rds_settings: RDSSettings
+) -> Tuple[Settings, dict]:
+    """Gather connections parameters and return them as a tuple of Settings
     and additional kwargs to be passed directly to db.connect_to_db.
 
-    The returned PostgresSettings will be updated with values pulled from SSM
+    The returned Settings will be updated with values pulled from SSM
     and SecretsManager based on the RDSSettings.
 
     The dictionary contains additional kwargs to be passed, e.g. a Callable to
@@ -45,7 +45,7 @@ def rds_connect_args(
         else (get_secret(rds_settings.pass_secret_id) or pg_settings.postgres_pass)
     )
 
-    new_pg = PostgresSettings(
+    new_pg = Settings(
         postgres_host=host,
         postgres_dbname=dbname,
         postgres_port=port,
@@ -66,7 +66,7 @@ def rds_connect_args(
     return (new_pg, kwargs)
 
 
-def dsn_with_query(pg_settings: PostgresSettings, query: str) -> PostgresDsn:
+def dsn_with_query(pg_settings: Settings, query: str) -> PostgresDsn:
     """DSN with query"""
     return PostgresDsn.build(
         scheme="postgresql",
