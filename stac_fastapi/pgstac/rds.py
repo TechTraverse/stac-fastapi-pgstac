@@ -8,15 +8,13 @@ from typing import Tuple, Union
 import boto3
 from pydantic import PostgresDsn
 
-from stac_fastapi.pgstac.config import Settings, RDSSettings
+from stac_fastapi.pgstac.config import RDSSettings, Settings
 
 logger = logging.getLogger("stac_fastapi_pgstac.rds")
 
 
 _CA_BUNDLE_URL = "https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem"
-_CA_BUNDLE_PATH = (
-    Path(__file__).absolute().parent.joinpath("certs/rds/global-bundle.pem")
-)
+_CA_BUNDLE_PATH = Path(__file__).absolute().parent.joinpath("certs/rds/global-bundle.pem")
 
 
 def rds_connect_args(
