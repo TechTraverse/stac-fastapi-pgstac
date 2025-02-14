@@ -164,40 +164,66 @@ async def lifespan(app: FastAPI):
 
 if os.environ.get("STAC_USE_RDS_IAM_AUTH") == "TRUE":
     pg_settings, conn_kwargs = rds_connect_args(settings, rds_settings)
-    settings=pg_settings
-else:
-    setttings=settings
-
-api = StacApi(
-    app=FastAPI(
-        openapi_url=settings.openapi_url,
-        docs_url=settings.docs_url,
-        redoc_url=None,
-        root_path=settings.root_path,
-        title=settings.stac_fastapi_title,
-        version=settings.stac_fastapi_version,
-        description=settings.stac_fastapi_description,
-        lifespan=lifespan,
-    ),
-    settings=settings,
-    extensions=application_extensions,
-    client=CoreCrudClient(pgstac_search_model=post_request_model),
-    response_class=ORJSONResponse,
-    items_get_request_model=items_get_request_model,
-    search_get_request_model=get_request_model,
-    search_post_request_model=post_request_model,
-    collections_get_request_model=collections_get_request_model,
-    middlewares=[
-        Middleware(BrotliMiddleware),
-        Middleware(ProxyHeaderMiddleware),
-        Middleware(
-            CORSMiddleware,
-            allow_origins=settings.cors_origins,
-            allow_methods=settings.cors_methods,
+    api = StacApi(
+        app=FastAPI(
+            openapi_url=settings.openapi_url,
+            docs_url=settings.docs_url,
+            redoc_url=None,
+            root_path=settings.root_path,
+            title=settings.stac_fastapi_title,
+            version=settings.stac_fastapi_version,
+            description=settings.stac_fastapi_description,
+            lifespan=lifespan,
         ),
-    ],
-    **conn_kwargs,
-)
+        settings=pg_settings,
+        extensions=application_extensions,
+        client=CoreCrudClient(pgstac_search_model=post_request_model),
+        response_class=ORJSONResponse,
+        items_get_request_model=items_get_request_model,
+        search_get_request_model=get_request_model,
+        search_post_request_model=post_request_model,
+        collections_get_request_model=collections_get_request_model,
+        middlewares=[
+            Middleware(BrotliMiddleware),
+            Middleware(ProxyHeaderMiddleware),
+            Middleware(
+                CORSMiddleware,
+                allow_origins=settings.cors_origins,
+                allow_methods=settings.cors_methods,
+            ),
+        ],
+        **conn_kwargs,
+    )
+else:
+    api = StacApi(
+        app=FastAPI(
+            openapi_url=settings.openapi_url,
+            docs_url=settings.docs_url,
+            redoc_url=None,
+            root_path=settings.root_path,
+            title=settings.stac_fastapi_title,
+            version=settings.stac_fastapi_version,
+            description=settings.stac_fastapi_description,
+            lifespan=lifespan,
+        ),
+        settings=settings,
+        extensions=application_extensions,
+        client=CoreCrudClient(pgstac_search_model=post_request_model),
+        response_class=ORJSONResponse,
+        items_get_request_model=items_get_request_model,
+        search_get_request_model=get_request_model,
+        search_post_request_model=post_request_model,
+        collections_get_request_model=collections_get_request_model,
+        middlewares=[
+            Middleware(BrotliMiddleware),
+            Middleware(ProxyHeaderMiddleware),
+            Middleware(
+                CORSMiddleware,
+                allow_origins=settings.cors_origins,
+                allow_methods=settings.cors_methods,
+            ),
+        ],
+    )
 app = api.app
 
 
