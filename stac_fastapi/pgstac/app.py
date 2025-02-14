@@ -39,7 +39,7 @@ from stac_fastapi.extensions.core.sort import SortConformanceClasses
 from stac_fastapi.extensions.third_party import BulkTransactionExtension
 from starlette.middleware import Middleware
 
-from stac_fastapi.pgstac.config import Settings
+from stac_fastapi.pgstac.config import Settings, RDSSettings
 from stac_fastapi.pgstac.core import CoreCrudClient
 from stac_fastapi.pgstac.db import close_db_connection, connect_to_db
 from stac_fastapi.pgstac.extensions import QueryExtension
@@ -47,7 +47,10 @@ from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
 
+from stac_fastapi.pgstac.rds import rds_connect_args
+
 settings = Settings()
+rds_settings = RDSSettings()
 
 # application extensions
 application_extensions_map = {
@@ -159,6 +162,11 @@ async def lifespan(app: FastAPI):
     yield
     await close_db_connection(app)
 
+if os.environ.get("STAC_USE_RDS_IAM_AUTH") == "TRUE":
+    pg_settings, conn_kwargs = rds_connect_args(settings, rds_settings)
+    settings=pg_settings
+else:
+    setttings=settings
 
 api = StacApi(
     app=FastAPI(
@@ -188,6 +196,7 @@ api = StacApi(
             allow_methods=settings.cors_methods,
         ),
     ],
+    **conn_kwargs,
 )
 app = api.app
 
