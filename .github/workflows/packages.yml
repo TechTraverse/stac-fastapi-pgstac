@@ -31,7 +31,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5.6.1
         with:
-          images: ghcr.io/${{ steps.downcase.outputs.repo }}/stac-fastapi-pgstac
+          images: ghcr.io/${{ steps.downcase.outputs.repo }}
       - name: Build and push Docker image
         uses: docker/build-push-action@v6.13.0
         with:
