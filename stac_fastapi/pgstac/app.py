@@ -162,7 +162,7 @@ async def lifespan(app: FastAPI):
     await close_db_connection(app)
 
 
-if os.environ.get("STAC_USE_RDS_IAM_AUTH") == "TRUE":
+if os.environ.get("STAC_RDS_USE_IAM_AUTH") == "TRUE":
     pg_settings, conn_kwargs = rds_connect_args(settings, rds_settings)
     api = StacApi(
         app=FastAPI(
