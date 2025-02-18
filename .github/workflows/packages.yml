@@ -14,6 +14,11 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Downcase REPO
+        id: downcase
+        run: |
+            repo_name=${{ github.repository }}
+            echo "repo=${repo_name,,}" >> $GITHUB_OUTPUT
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Log in to the Container registry
@@ -26,7 +31,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5.6.1
         with:
-          images: ghcr.io/stac-utils/stac-fastapi-pgstac
+          images: ghcr.io/${{ steps.downcase.outputs.repo }}/stac-fastapi-pgstac
       - name: Build and push Docker image
         uses: docker/build-push-action@v6.13.0
         with:
