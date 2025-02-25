@@ -35,11 +35,7 @@ def rds_connect_args(
     user = pg_settings.postgres_user
     region = "us-east-1"
     dbname = pg_settings.postgres_dbname
-    passwd = (
-        None
-        if rds_settings.use_iam_auth
-        else (pg_settings.postgres_pass)
-    )
+    passwd = None if rds_settings.use_iam_auth else (pg_settings.postgres_pass)
 
     new_pg = Settings(
         postgres_host=host,

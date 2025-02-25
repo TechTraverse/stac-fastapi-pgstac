@@ -1,6 +1,6 @@
 """Postgres API configuration."""
 
-from typing import List, Optional, Type
+from typing import List, Type
 from urllib.parse import quote_plus as quote
 
 from pydantic import BaseModel, field_validator
