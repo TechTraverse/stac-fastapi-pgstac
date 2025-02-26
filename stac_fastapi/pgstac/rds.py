@@ -30,7 +30,7 @@ def rds_connect_args(
     support IAM-based authentication for RDS.
     """
 
-    host = pg_settings.postgres_host
+    host = pg_settings.postgres_host_writer
     port = int(pg_settings.postgres_port or 5432)
     user = pg_settings.postgres_user
     region = None
