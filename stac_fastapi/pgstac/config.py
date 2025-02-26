@@ -1,6 +1,6 @@
 """Postgres API configuration."""
 
-from typing import List, Type
+from typing import List, Optional, Type
 from urllib.parse import quote_plus as quote
 
 from pydantic import BaseModel, field_validator
@@ -57,12 +57,12 @@ class Settings(ApiSettings):
         invalid_id_chars: list of characters that are not allowed in item or collection ids.
     """
 
-    postgres_user: str
-    postgres_pass: str
-    postgres_host_reader: str
-    postgres_host_writer: str
-    postgres_port: int
-    postgres_dbname: str
+    postgres_user: Optional[str] = None
+    postgres_pass: Optional[str] = None
+    postgres_host_reader: Optional[str] = None
+    postgres_host_writer: Optional[str] = None
+    postgres_port: Optional[int] = None
+    postgres_dbname: Optional[str] = None
 
     db_min_conn_size: int = 10
     db_max_conn_size: int = 10
