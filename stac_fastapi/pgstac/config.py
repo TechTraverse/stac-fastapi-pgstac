@@ -1,6 +1,6 @@
 """Postgres API configuration."""
 
-from typing import List, Type, Optional
+from typing import List, Optional, Type
 from urllib.parse import quote_plus as quote
 
 from pydantic import BaseModel, field_validator
@@ -56,6 +56,7 @@ class Settings(ApiSettings):
         use_api_hydrate: perform hydration of stac items within stac-fastapi.
         invalid_id_chars: list of characters that are not allowed in item or collection ids.
     """
+
     postgres_user: Optional[str] = None
     postgres_pass: Optional[str] = None
     postgres_host_reader: Optional[str] = None
