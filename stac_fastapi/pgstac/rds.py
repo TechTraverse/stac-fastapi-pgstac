@@ -64,7 +64,7 @@ def dsn_with_query(pg_settings: Settings, query: str) -> PostgresDsn:
         scheme="postgresql",
         username=pg_settings.postgres_user,
         password=pg_settings.postgres_pass,
-        host=pg_settings.postgres_host,
+        host=pg_settings.postgres_host_writer,
         port=pg_settings.postgres_port,
         path=pg_settings.postgres_dbname,
         query=query,

@@ -3,7 +3,7 @@
 from typing import List, Optional, Type
 from urllib.parse import quote_plus as quote
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, PostgresDsn, field_validator
 from pydantic_settings import SettingsConfigDict
 from stac_fastapi.types.config import ApiSettings
 
@@ -63,6 +63,8 @@ class Settings(ApiSettings):
     postgres_host_writer: Optional[str] = None
     postgres_port: Optional[int] = None
     postgres_dbname: Optional[str] = None
+
+    database_url: Optional[PostgresDsn] = None
 
     db_min_conn_size: int = 10
     db_max_conn_size: int = 10
