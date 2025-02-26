@@ -48,8 +48,8 @@ from stac_fastapi.pgstac.rds import rds_connect_args
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
 
-settings = Settings()
 rds_settings = RDSSettings()
+settings = Settings()
 
 # application extensions
 application_extensions_map = {
