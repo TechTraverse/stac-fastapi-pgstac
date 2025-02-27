@@ -77,13 +77,13 @@ class Settings(ApiSettings):
                 "aws_region must be provided when IAM authentication is enabled"
             )
         rds_client = boto3.client("rds", region_name=region)
-        password = rds_client.generate_db_auth_token(
+        postgres_pass = rds_client.generate_db_auth_token(
             DBHostname=postgres_host_writer,
             Port=postgres_port,
             DBUsername=postgres_user,
         )
     else:
-        password = os.environ.get("postgres_pass")
+        postgres_pass = postgres_pass
 
     database_url: Optional[PostgresDsn] = None
 
@@ -116,17 +116,17 @@ class Settings(ApiSettings):
     @property
     def reader_connection_string(self):
         """Create reader psql connection string."""
-        return f"postgresql://{self.postgres_user}:{quote(self.password)}@{self.postgres_host_reader}:{self.postgres_port}/{self.postgres_dbname}"
+        return f"postgresql://{self.postgres_user}:{quote(self.postgres_pass)}@{self.postgres_host_reader}:{self.postgres_port}/{self.postgres_dbname}"
 
     @property
     def writer_connection_string(self):
         """Create writer psql connection string."""
-        return f"postgresql://{self.postgres_user}:{quote(self.password)}@{self.postgres_host_writer}:{self.postgres_port}/{self.postgres_dbname}"
+        return f"postgresql://{self.postgres_user}:{quote(self.postgres_pass)}@{self.postgres_host_writer}:{self.postgres_port}/{self.postgres_dbname}"
 
     @property
     def testing_connection_string(self):
         """Create testing psql connection string."""
-        return f"postgresql://{self.postgres_user}:{quote(self.password)}@{self.postgres_host_writer}:{self.postgres_port}/pgstactestdb"
+        return f"postgresql://{self.postgres_user}:{quote(self.postgres_pass)}@{self.postgres_host_writer}:{self.postgres_port}/pgstactestdb"
 
     model_config = SettingsConfigDict(
         **{**ApiSettings.model_config, **{"env_nested_delimiter": "__"}}
