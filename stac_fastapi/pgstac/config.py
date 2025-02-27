@@ -1,8 +1,10 @@
 """Postgres API configuration."""
 
+import os
 from typing import List, Optional, Type
 from urllib.parse import quote_plus as quote
 
+import boto3
 from pydantic import BaseModel, PostgresDsn, field_validator
 from pydantic_settings import SettingsConfigDict
 from stac_fastapi.types.config import ApiSettings
@@ -64,6 +66,25 @@ class Settings(ApiSettings):
     postgres_port: Optional[int] = None
     postgres_dbname: Optional[str] = None
 
+    iam_auth_enabled: bool = False
+    aws_region: Optional[str] = None
+
+    # Determine password/token based on IAM flag
+    if os.environ.get("iam_auth_enabled"):
+        region = os.environ.get("aws_region")
+        if not region:
+            raise ValueError(
+                "aws_region must be provided when IAM authentication is enabled"
+            )
+        rds_client = boto3.client("rds", region_name=region)
+        postgres_pass = rds_client.generate_db_auth_token(
+            DBHostname=postgres_host_writer,
+            Port=postgres_port,
+            DBUsername=postgres_user,
+        )
+    else:
+        postgres_pass = postgres_pass
+
     database_url: Optional[PostgresDsn] = None
 
     db_min_conn_size: int = 10
@@ -110,11 +131,3 @@ class Settings(ApiSettings):
     model_config = SettingsConfigDict(
         **{**ApiSettings.model_config, **{"env_nested_delimiter": "__"}}
     )
-
-
-class RDSSettings(ApiSettings):
-    """Extended settings for AWS RDS."""
-
-    use_iam_auth: bool = False
-
-    model_config = {"env_prefix": "STAC_RDS_", "env_file": ".env", "extra": "ignore"}
