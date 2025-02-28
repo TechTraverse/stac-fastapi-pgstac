@@ -1,6 +1,5 @@
 """Postgres API configuration."""
 
-import os
 from typing import List, Optional, Type
 from urllib.parse import quote_plus as quote
 
@@ -70,13 +69,12 @@ class Settings(ApiSettings):
     aws_region: Optional[str] = None
 
     # Determine password/token based on IAM flag
-    if os.environ.get("iam_auth_enabled"):
-        region = os.environ.get("aws_region")
-        if not region:
+    if iam_auth_enabled:
+        if not aws_region:
             raise ValueError(
                 "aws_region must be provided when IAM authentication is enabled"
             )
-        rds_client = boto3.client("rds", region_name=region)
+        rds_client = boto3.client("rds", region_name=aws_region)
         postgres_pass = rds_client.generate_db_auth_token(
             DBHostname=postgres_host_writer,
             Port=postgres_port,
