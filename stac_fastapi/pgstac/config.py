@@ -4,7 +4,7 @@ from typing import List, Optional, Type
 from urllib.parse import quote_plus as quote
 
 import boto3
-from pydantic import BaseModel, PostgresDsn, field_validator
+from pydantic import BaseModel, field_validator
 from pydantic_settings import SettingsConfigDict
 from stac_fastapi.types.config import ApiSettings
 
@@ -54,6 +54,8 @@ class Settings(ApiSettings):
         postgres_host_writer: hostname for the writer connection.
         postgres_port: database port.
         postgres_dbname: database name.
+        iam_auth_enabled: enable AWS RDS IAM authentication.
+        aws_region: AWS region to use for generating IAM token.
         use_api_hydrate: perform hydration of stac items within stac-fastapi.
         invalid_id_chars: list of characters that are not allowed in item or collection ids.
     """
@@ -67,23 +69,6 @@ class Settings(ApiSettings):
 
     iam_auth_enabled: bool = False
     aws_region: Optional[str] = None
-
-    # Determine password/token based on IAM flag
-    if iam_auth_enabled:
-        if not aws_region:
-            raise ValueError(
-                "aws_region must be provided when IAM authentication is enabled"
-            )
-        rds_client = boto3.client("rds", region_name=aws_region)
-        postgres_pass = rds_client.generate_db_auth_token(
-            DBHostname=postgres_host_writer,
-            Port=postgres_port,
-            DBUsername=postgres_user,
-        )
-    else:
-        postgres_pass = postgres_pass
-
-    database_url: Optional[PostgresDsn] = None
 
     db_min_conn_size: int = 10
     db_max_conn_size: int = 10
@@ -100,6 +85,22 @@ class Settings(ApiSettings):
     cors_methods: str = "GET,POST,OPTIONS"
 
     testing: bool = False
+
+    # Determine password/token based on IAM flag
+    if iam_auth_enabled:
+        if not aws_region:
+            raise ValueError(
+                "aws_region must be provided when IAM authentication is enabled"
+            )
+        rds_client = boto3.client("rds", region_name=aws_region)
+        postgres_pass = rds_client.generate_db_auth_token(
+            DBHostname=postgres_host_writer,
+            Port=postgres_port,
+            DBUsername=postgres_user,
+            Region=aws_region,
+        )
+    else:
+        postgres_pass = postgres_pass
 
     @field_validator("cors_origins")
     def parse_cors_origin(cls, v):
