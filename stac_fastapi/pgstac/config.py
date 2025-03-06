@@ -61,6 +61,7 @@ class Settings(ApiSettings):
     """
 
     postgres_user: Optional[str] = None
+    postgres_user_writer: Optional[str] = None
     postgres_pass: Optional[str] = None
     postgres_host_reader: Optional[str] = None
     postgres_host_writer: Optional[str] = None
@@ -120,7 +121,7 @@ class Settings(ApiSettings):
     @property
     def writer_connection_string(self):
         """Create writer psql connection string."""
-        return f"postgresql://{self.postgres_user}:{quote_plus(self.postgres_pass)}@{self.postgres_host_writer}:{self.postgres_port}/{self.postgres_dbname}"
+        return f"postgresql://{self.postgres_user_writer}:{quote_plus(self.postgres_pass)}@{self.postgres_host_writer}:{self.postgres_port}/{self.postgres_dbname}"
 
     @property
     def testing_connection_string(self):
