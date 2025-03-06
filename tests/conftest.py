@@ -121,6 +121,7 @@ def api_client(request, database):
     hydrate, prefix, response_model = request.param
     api_settings = Settings(
         postgres_user=database.user,
+        postgres_user_writer=database.user,
         postgres_pass=database.password,
         postgres_host_reader=database.host,
         postgres_host_writer=database.host,
@@ -299,6 +300,7 @@ async def load_test2_item(app_client, load_test_data, load_test2_collection):
 def api_client_no_ext(database):
     api_settings = Settings(
         postgres_user=database.user,
+        postgres_user_writer=database.user,
         postgres_pass=database.password,
         postgres_host_reader=database.host,
         postgres_host_writer=database.host,

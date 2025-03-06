@@ -101,7 +101,6 @@ class Settings(ApiSettings):
             Region=aws_region,
         )
     else:
-        postgres_user_writer = postgres_user
         postgres_pass = postgres_pass
 
     @field_validator("cors_origins")

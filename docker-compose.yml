@@ -9,6 +9,7 @@ services:
       - RELOAD=true
       - ENVIRONMENT=local
       - POSTGRES_USER=username
+      - POSTGRES_USER_WRITER=username
       - POSTGRES_PASS=password
       - POSTGRES_DBNAME=postgis
       - POSTGRES_HOST_READER=database
