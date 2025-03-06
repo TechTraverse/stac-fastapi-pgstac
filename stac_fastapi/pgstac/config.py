@@ -1,7 +1,7 @@
 """Postgres API configuration."""
 
 from typing import List, Optional, Type
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus as quote
 
 import boto3
 from pydantic import BaseModel, field_validator
@@ -116,17 +116,17 @@ class Settings(ApiSettings):
     @property
     def reader_connection_string(self):
         """Create reader psql connection string."""
-        return f"postgresql://{self.postgres_user}:{quote_plus(self.postgres_pass)}@{self.postgres_host_reader}:{self.postgres_port}/{self.postgres_dbname}"
+        return f"postgresql://{self.postgres_user}:{quote(str(self.postgres_pass))}@{self.postgres_host_reader}:{self.postgres_port}/{self.postgres_dbname}"
 
     @property
     def writer_connection_string(self):
         """Create writer psql connection string."""
-        return f"postgresql://{self.postgres_user_writer}:{quote_plus(self.postgres_pass)}@{self.postgres_host_writer}:{self.postgres_port}/{self.postgres_dbname}"
+        return f"postgresql://{self.postgres_user_writer}:{quote(str(self.postgres_pass))}@{self.postgres_host_writer}:{self.postgres_port}/{self.postgres_dbname}"
 
     @property
     def testing_connection_string(self):
         """Create testing psql connection string."""
-        return f"postgresql://{self.postgres_user}:{quote_plus(self.postgres_pass)}@{self.postgres_host_writer}:{self.postgres_port}/pgstactestdb"
+        return f"postgresql://{self.postgres_user}:{quote(str(self.postgres_pass))}@{self.postgres_host_writer}:{self.postgres_port}/pgstactestdb"
 
     model_config = SettingsConfigDict(
         **{**ApiSettings.model_config, **{"env_nested_delimiter": "__"}}
