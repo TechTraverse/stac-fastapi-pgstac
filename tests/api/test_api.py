@@ -721,6 +721,7 @@ async def test_wrapped_function(load_test_data, database) -> None:
 
     settings = Settings(
         postgres_user=database.user,
+        postgres_user_writer=database.user,
         postgres_pass=database.password,
         postgres_host_reader=database.host,
         postgres_host_writer=database.host,
@@ -787,6 +788,7 @@ async def test_no_extension(
 
     settings = Settings(
         postgres_user=database.user,
+        postgres_user_writer=database.user,
         postgres_pass=database.password,
         postgres_host_reader=database.host,
         postgres_host_writer=database.host,
