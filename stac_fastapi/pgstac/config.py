@@ -95,6 +95,14 @@ class Settings(ApiSettings):
     port = os.environ.get("postgres_port", 5432)
     dbname = os.environ.get("postgres_dbname")
 
+
+    print(username)
+    print(username_writer)
+    print(host_reader)
+    print(host_writer)
+    print(port)
+    print(dbname)
+
     # Determine password/token based on IAM flag
     if os.environ.get("iam_auth_enabled"):
         region = os.environ.get("aws_region")
