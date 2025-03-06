@@ -103,6 +103,10 @@ class Settings(ApiSettings):
     else:
         postgres_pass = postgres_pass
 
+    print(f"pass: {postgres_pass}")
+    print(f"reader URL: postgresql://{postgres_user}:{quote(str(postgres_pass))}@{postgres_host_reader}:{postgres_port}/{postgres_dbname}")
+    print(f"writer URL: postgresql://{postgres_user_writer}:{quote(str(postgres_pass))}@{postgres_host_writer}:{postgres_port}/{postgres_dbname}")
+
     @field_validator("cors_origins")
     def parse_cors_origin(cls, v):
         """Parse CORS origins."""
