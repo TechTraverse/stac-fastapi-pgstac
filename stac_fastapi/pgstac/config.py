@@ -88,8 +88,8 @@ class Settings(ApiSettings):
 
     testing: bool = False
 
-    username = os.environ["postgres_user"]
-    username_writer = os.environ["postgres_user_writer"]
+    username = os.environ["POSTGRES_USER"]
+    username_writer = os.environ["POSTGRES_USER_WRITER"]
     host_reader = os.environ.get("postgres_host_reader", "")
     host_writer = os.environ.get("postgres_host_writer", "")
     port = os.environ.get("postgres_port", 5432)
