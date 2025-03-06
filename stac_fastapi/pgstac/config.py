@@ -1,5 +1,6 @@
 """Postgres API configuration."""
 
+import os
 from typing import List, Optional, Type
 from urllib.parse import quote_plus as quote
 
@@ -60,13 +61,13 @@ class Settings(ApiSettings):
         invalid_id_chars: list of characters that are not allowed in item or collection ids.
     """
 
-    postgres_user: str
-    postgres_user_writer: str
-    postgres_pass: str
-    postgres_host_reader: str
-    postgres_host_writer: str
-    postgres_port: int
-    postgres_dbname: str
+    postgres_user: Optional[str] = None
+    postgres_user_writer: Optional[str] = None
+    postgres_pass: Optional[str] = None
+    postgres_host_reader: Optional[str] = None
+    postgres_host_writer: Optional[str] = None
+    postgres_port: Optional[int] = None
+    postgres_dbname: Optional[str] = None
 
     iam_auth_enabled: bool = False
     aws_region: Optional[str] = None
@@ -87,6 +88,43 @@ class Settings(ApiSettings):
 
     testing: bool = False
 
+    username = os.environ.get("postgres_user")
+    username_writer = os.environ.get("postgres_user_writer")
+    host_reader = os.environ.get("postgres_host_reader", "")
+    host_writer = os.environ.get("postgres_host_writer", "")
+    port = os.environ.get("postgres_port", 5432)
+    dbname = os.environ.get("postgres_dbname")
+
+    # Determine password/token based on IAM flag
+    if os.environ.get("iam_auth_enabled"):
+        region = os.environ.get("aws_region")
+        if not region:
+            raise ValueError(
+                "aws_region must be provided when IAM authentication is enabled"
+            )
+        rds_client = boto3.client("rds", region_name=region)
+        password_reader = rds_client.generate_db_auth_token(
+            DBHostname=host_reader, Port=int(port), DBUsername=username, Region=region
+        )
+        password_writer = rds_client.generate_db_auth_token(
+            DBHostname=host_writer,
+            Port=int(port),
+            DBUsername=username_writer,
+            Region=region,
+        )
+    else:
+        password_reader = os.environ.get("postgres_pass")
+        password_writer = os.environ.get("postgres_pass")
+
+    print(password_reader)
+    print(password_writer)
+    print(
+        f"reader url: postgresql://{username}:{quote(str(password_reader))}@{host_reader}:{port}/{dbname}"
+    )
+    print(
+        f"writer url: postgresql://{username_writer}:{quote(str(password_writer))}@{host_writer}:{port}/{dbname}"
+    )
+
     @field_validator("cors_origins")
     def parse_cors_origin(cls, v):
         """Parse CORS origins."""
@@ -100,52 +138,12 @@ class Settings(ApiSettings):
     @property
     def reader_connection_string(self):
         """Create reader psql connection string."""
-        # Determine password/token based on IAM flag
-        if self.iam_auth_enabled:
-            if not self.aws_region:
-                raise ValueError(
-                    "aws_region must be provided when IAM authentication is enabled"
-                )
-            rds_client = boto3.client("rds", region_name=self.aws_region)
-            postgres_pass = rds_client.generate_db_auth_token(
-                DBHostname=self.postgres_host_reader,
-                Port=self.postgres_port,
-                DBUsername=self.postgres_user,
-                Region=self.aws_region,
-            )
-        else:
-            postgres_pass = self.postgres_pass
-
-        print(postgres_pass)
-        print(
-            f"postgresql://{self.postgres_user}:{quote(str(postgres_pass))}@{self.postgres_host_reader}:{self.postgres_port}/{self.postgres_dbname}"
-        )
-        return f"postgresql://{self.postgres_user}:{quote(str(postgres_pass))}@{self.postgres_host_reader}:{self.postgres_port}/{self.postgres_dbname}"
+        return f"postgresql://{self.postgres_user}:{quote(str(self.password_reader))}@{self.postgres_host_reader}:{self.postgres_port}/{self.postgres_dbname}"
 
     @property
     def writer_connection_string(self):
         """Create writer psql connection string."""
-        # Determine password/token based on IAM flag
-        if self.iam_auth_enabled:
-            if not self.aws_region:
-                raise ValueError(
-                    "aws_region must be provided when IAM authentication is enabled"
-                )
-            rds_client = boto3.client("rds", region_name=self.aws_region)
-            postgres_pass = rds_client.generate_db_auth_token(
-                DBHostname=self.postgres_host_writer,
-                Port=self.postgres_port,
-                DBUsername=self.postgres_user_writer,
-                Region=self.aws_region,
-            )
-        else:
-            postgres_pass = self.postgres_pass
-
-        print(postgres_pass)
-        print(
-            f"postgresql://{self.postgres_user_writer}:{quote(str(postgres_pass))}@{self.postgres_host_writer}:{self.postgres_port}/{self.postgres_dbname}"
-        )
-        return f"postgresql://{self.postgres_user_writer}:{quote(str(postgres_pass))}@{self.postgres_host_writer}:{self.postgres_port}/{self.postgres_dbname}"
+        return f"postgresql://{self.postgres_user_writer}:{quote(str(self.password_writer))}@{self.postgres_host_writer}:{self.postgres_port}/{self.postgres_dbname}"
 
     @property
     def testing_connection_string(self):
