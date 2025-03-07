@@ -1,6 +1,5 @@
 """Postgres API configuration."""
 
-import os
 from typing import List, Optional, Type
 from urllib.parse import quote_plus as quote
 
@@ -61,13 +60,13 @@ class Settings(ApiSettings):
         invalid_id_chars: list of characters that are not allowed in item or collection ids.
     """
 
-    postgres_user: str
-    postgres_user_writer: str
-    postgres_pass: str
-    postgres_host_reader: str
-    postgres_host_writer: str
-    postgres_port: int
-    postgres_dbname: str
+    postgres_user: Optional[str] = None
+    postgres_user_writer: Optional[str] = None
+    postgres_pass: Optional[str] = None
+    postgres_host_reader: Optional[str] = None
+    postgres_host_writer: Optional[str] = None
+    postgres_port: Optional[int] = None
+    postgres_dbname: Optional[str] = None
 
     iam_auth_enabled: bool = False
     aws_region: Optional[str] = None
@@ -88,49 +87,36 @@ class Settings(ApiSettings):
 
     testing: bool = False
 
-    username = os.environ["POSTGRES_USER"]
-    username_writer = os.environ["POSTGRES_USER_WRITER"]
-    host_reader = os.environ.get("postgres_host_reader", "")
-    host_writer = os.environ.get("postgres_host_writer", "")
-    port = os.environ.get("postgres_port", 5432)
-    dbname = os.environ.get("postgres_dbname")
-
-
-    print(username)
-    print(username_writer)
-    print(host_reader)
-    print(host_writer)
-    print(port)
-    print(dbname)
-
     # Determine password/token based on IAM flag
-    if os.environ.get("iam_auth_enabled"):
-        region = os.environ.get("aws_region")
-        if not region:
+    if iam_auth_enabled:
+        if not aws_region:
             raise ValueError(
                 "aws_region must be provided when IAM authentication is enabled"
             )
-        rds_client = boto3.client("rds", region_name=region)
+        rds_client = boto3.client("rds", region_name=aws_region)
         password_reader = rds_client.generate_db_auth_token(
-            DBHostname=host_reader, Port=int(port), DBUsername=username, Region=region
+            DBHostname=postgres_host_reader,
+            Port=postgres_port,
+            DBUsername=postgres_user,
+            Region=aws_region,
         )
         password_writer = rds_client.generate_db_auth_token(
-            DBHostname=host_writer,
-            Port=int(port),
-            DBUsername=username_writer,
-            Region=region,
+            DBHostname=postgres_host_writer,
+            Port=postgres_port,
+            DBUsername=postgres_user_writer,
+            Region=aws_region,
         )
     else:
-        password_reader = os.environ.get("postgres_pass")
-        password_writer = os.environ.get("postgres_pass")
+        password_reader = postgres_pass
+        password_writer = postgres_pass
 
     print(password_reader)
     print(password_writer)
     print(
-        f"reader url: postgresql://{username}:{quote(str(password_reader))}@{host_reader}:{port}/{dbname}"
+        f"reader url: postgresql://{postgres_user}:{quote(str(password_reader))}@{postgres_host_reader}:{postgres_port}/{postgres_dbname}"
     )
     print(
-        f"writer url: postgresql://{username_writer}:{quote(str(password_writer))}@{host_writer}:{port}/{dbname}"
+        f"writer url: postgresql://{postgres_user_writer}:{quote(str(password_writer))}@{postgres_host_writer}:{postgres_port}/{postgres_dbname}"
     )
 
     @field_validator("cors_origins")
