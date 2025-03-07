@@ -87,6 +87,7 @@ class Settings(ApiSettings):
 
     testing: bool = False
 
+    @field_validator("reader_url")
     def assemble_reader_connection(cls, v: Optional[str], info: Any) -> Any:
         """Validate and assemble the database connection string."""
         if isinstance(v, str):
@@ -117,6 +118,7 @@ class Settings(ApiSettings):
 
         return reader_url
 
+    @field_validator("writer_url")
     def assemble_writer_connection(cls, v: Optional[str], info: Any) -> Any:
         """Validate and assemble the database connection string."""
         if isinstance(v, str):
