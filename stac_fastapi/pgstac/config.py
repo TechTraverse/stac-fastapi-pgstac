@@ -119,8 +119,6 @@ class Settings(ApiSettings):
             f"postgresql://{username}:{quote(str(password))}@{host}:{port}/{dbname}"
         )
 
-        print(reader_url)
-
         return reader_url
 
     @field_validator("writer_connection_string", mode="before")
@@ -151,8 +149,6 @@ class Settings(ApiSettings):
         writer_url = (
             f"postgresql://{username}:{quote(str(password))}@{host}:{port}/{dbname}"
         )
-
-        print(writer_url)
 
         return writer_url
 
