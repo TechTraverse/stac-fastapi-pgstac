@@ -4,7 +4,7 @@ from typing import Any, List, Optional, Type
 from urllib.parse import quote_plus as quote
 
 import boto3
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, PostgresDsn, field_validator
 from pydantic_settings import SettingsConfigDict
 from stac_fastapi.types.config import ApiSettings
 
@@ -85,6 +85,9 @@ class Settings(ApiSettings):
     cors_origins: str = "*"
     cors_methods: str = "GET,POST,OPTIONS"
 
+    reader_connection_string: Optional[PostgresDsn] = None
+    writer_connection_string: Optional[PostgresDsn] = None
+
     testing: bool = False
 
     @field_validator("reader_connection_string", mode="before")
@@ -112,8 +115,13 @@ class Settings(ApiSettings):
         else:
             password = info.data["postgres_pass"]
 
-        reader_url = (
-            f"postgresql://{username}:{quote(str(password))}@{host}:{port}/{dbname}"
+        reader_url = PostgresDsn.build(
+            scheme="postgresql",
+            username=username,
+            password=quote(password),
+            host=host,
+            port=int(port),
+            path=dbname,
         )
 
         return reader_url
@@ -143,8 +151,13 @@ class Settings(ApiSettings):
         else:
             password = info.data["postgres_pass"]
 
-        writer_url = (
-            f"postgresql://{username}:{quote(str(password))}@{host}:{port}/{dbname}"
+        writer_url = PostgresDsn.build(
+            scheme="postgresql",
+            username=username,
+            password=quote(password),
+            host=host,
+            port=int(port),
+            path=dbname,
         )
 
         return writer_url
@@ -159,15 +172,15 @@ class Settings(ApiSettings):
         """Parse CORS methods."""
         return [method.strip() for method in v.split(",")]
 
-    @property
-    def reader_connection_string(self):
-        """Create testing psql connection string."""
-        return self.assemble_reader_connection()
+    # @property
+    # def reader_connection_string(self):
+    #     """Create testing psql connection string."""
+    #     return self.assemble_reader_connection()
 
-    @property
-    def writer_connection_string(self):
-        """Create testing psql connection string."""
-        return self.assemble_writer_connection()
+    # @property
+    # def writer_connection_string(self):
+    #     """Create testing psql connection string."""
+    #     return self.assemble_writer_connection()
 
     @property
     def testing_connection_string(self):
