@@ -1,6 +1,6 @@
 """Postgres API configuration."""
 
-from typing import List, Optional, Type
+from typing import Any, List, Optional, Type
 from urllib.parse import quote_plus as quote
 
 import boto3
@@ -87,37 +87,67 @@ class Settings(ApiSettings):
 
     testing: bool = False
 
-    # Determine password/token based on IAM flag
-    if iam_auth_enabled:
-        if not aws_region:
-            raise ValueError(
-                "aws_region must be provided when IAM authentication is enabled"
-            )
-        rds_client = boto3.client("rds", region_name=aws_region)
-        password_reader = rds_client.generate_db_auth_token(
-            DBHostname=postgres_host_reader,
-            Port=postgres_port,
-            DBUsername=postgres_user,
-            Region=aws_region,
-        )
-        password_writer = rds_client.generate_db_auth_token(
-            DBHostname=postgres_host_writer,
-            Port=postgres_port,
-            DBUsername=postgres_user_writer,
-            Region=aws_region,
-        )
-    else:
-        password_reader = postgres_pass
-        password_writer = postgres_pass
+    @field_validator("reader_connection_string")
+    def assemble_reader_connection(cls, v: Optional[str], info: Any) -> Any:
+        """Validate and assemble the database connection string."""
+        if isinstance(v, str):
+            return v
 
-    print(password_reader)
-    print(password_writer)
-    print(
-        f"reader url: postgresql://{postgres_user}:{quote(str(password_reader))}@{postgres_host_reader}:{postgres_port}/{postgres_dbname}"
-    )
-    print(
-        f"writer url: postgresql://{postgres_user_writer}:{quote(str(password_writer))}@{postgres_host_writer}:{postgres_port}/{postgres_dbname}"
-    )
+        username = info.data["postgres_user"]
+        host = info.data.get("postgres_host_reader", "")
+        port = info.data.get("postgres_port", 5432)
+        dbname = info.data.get("postgres_dbname", "")
+
+        # Determine password/token based on IAM flag
+        if info.data.get("iam_auth_enabled"):
+            region = info.data.get("aws_region")
+            if not region:
+                raise ValueError(
+                    "aws_region must be provided when IAM authentication is enabled"
+                )
+            rds_client = boto3.client("rds", region_name=region)
+            password = rds_client.generate_db_auth_token(
+                DBHostname=host, Port=int(port), DBUsername=username, Region=region
+            )
+        else:
+            password = info.data["postgres_pass"]
+
+        reader_url = (
+            f"postgresql://{username}:{quote(str(password))}@{host}:{port}/{dbname}"
+        )
+
+        return reader_url
+
+    @field_validator("writer_connection_string")
+    def assemble_writer_connection(cls, v: Optional[str], info: Any) -> Any:
+        """Validate and assemble the database connection string."""
+        if isinstance(v, str):
+            return v
+
+        username = info.data["postgres_user_writer"]
+        host = info.data.get("postgres_host_writer", "")
+        port = info.data.get("postgres_port", 5432)
+        dbname = info.data.get("postgres_dbname", "")
+
+        # Determine password/token based on IAM flag
+        if info.data.get("iam_auth_enabled"):
+            region = info.data.get("aws_region")
+            if not region:
+                raise ValueError(
+                    "aws_region must be provided when IAM authentication is enabled"
+                )
+            rds_client = boto3.client("rds", region_name=region)
+            password = rds_client.generate_db_auth_token(
+                DBHostname=host, Port=int(port), DBUsername=username, Region=region
+            )
+        else:
+            password = info.data["postgres_pass"]
+
+        writer_url = (
+            f"postgresql://{username}:{quote(str(password))}@{host}:{port}/{dbname}"
+        )
+
+        return writer_url
 
     @field_validator("cors_origins")
     def parse_cors_origin(cls, v):
@@ -128,16 +158,6 @@ class Settings(ApiSettings):
     def parse_cors_methods(cls, v):
         """Parse CORS methods."""
         return [method.strip() for method in v.split(",")]
-
-    @property
-    def reader_connection_string(self):
-        """Create reader psql connection string."""
-        return f"postgresql://{self.postgres_user}:{quote(str(self.password_reader))}@{self.postgres_host_reader}:{self.postgres_port}/{self.postgres_dbname}"
-
-    @property
-    def writer_connection_string(self):
-        """Create writer psql connection string."""
-        return f"postgresql://{self.postgres_user_writer}:{quote(str(self.password_writer))}@{self.postgres_host_writer}:{self.postgres_port}/{self.postgres_dbname}"
 
     @property
     def testing_connection_string(self):
