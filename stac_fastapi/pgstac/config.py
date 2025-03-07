@@ -119,6 +119,8 @@ class Settings(ApiSettings):
             f"postgresql://{username}:{quote(str(password))}@{host}:{port}/{dbname}"
         )
 
+        print(reader_url)
+
         return reader_url
 
     @field_validator("writer_connection_string", mode="before")
@@ -150,6 +152,8 @@ class Settings(ApiSettings):
             f"postgresql://{username}:{quote(str(password))}@{host}:{port}/{dbname}"
         )
 
+        print(writer_url)
+
         return writer_url
 
     @field_validator("cors_origins")
@@ -161,16 +165,6 @@ class Settings(ApiSettings):
     def parse_cors_methods(cls, v):
         """Parse CORS methods."""
         return [method.strip() for method in v.split(",")]
-
-    # @property
-    # def reader_connection_string(self):
-    #     """Create testing psql connection string."""
-    #     return self.assemble_reader_connection()
-
-    # @property
-    # def writer_connection_string(self):
-    #     """Create testing psql connection string."""
-    #     return self.assemble_writer_connection()
 
     @property
     def testing_connection_string(self):
