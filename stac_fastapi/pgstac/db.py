@@ -163,7 +163,7 @@ class DB:
 
         if os.environ.get("IAM_AUTH_ENABLED") == "TRUE":
             print("iam auth")
-            if "eo_readonly" in connection_string:
+            if settings.postgres_user == "eo_readonly":
                 print("read only")
                 host = settings.postgres_host_reader
                 user = settings.postgres_user
