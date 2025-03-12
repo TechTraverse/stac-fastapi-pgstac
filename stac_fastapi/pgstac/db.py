@@ -1,8 +1,6 @@
 """Database connection handling."""
 
-import functools
 import json
-import os
 from contextlib import asynccontextmanager, contextmanager
 from typing import (
     AsyncIterator,
