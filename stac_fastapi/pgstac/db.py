@@ -80,8 +80,8 @@ async def connect_to_db(
         writepool = settings.writer_connection_string
 
     db = DB()
-    app.state.readpool = await db.create_pool(readpool, settings)
-    app.state.writepool = await db.create_pool(writepool, settings)
+    app.state.readpool = await db.create_pool(readpool, settings, "read")
+    app.state.writepool = await db.create_pool(writepool, settings, "write")
     app.state.get_connection = get_conn if get_conn else get_connection
 
 
@@ -156,14 +156,13 @@ class DB:
     _pool = attr.ib(default=None)
     _connection = attr.ib(default=None)
 
-    async def create_pool(self, connection_string: str, settings, **kwargs):
+    async def create_pool(self, connection_string: str, settings, mode):
         """Create a connection pool."""
-        print(connection_string)
-        print(settings)
 
+        kwargs = {}
         if os.environ.get("IAM_AUTH_ENABLED") == "TRUE":
             print("iam auth")
-            if settings.postgres_user == "eo_readonly":
+            if mode == "read":
                 print("read only")
                 host = settings.postgres_host_reader
                 user = settings.postgres_user
