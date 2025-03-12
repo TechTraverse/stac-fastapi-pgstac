@@ -1,6 +1,8 @@
 """Database connection handling."""
 
+import functools
 import json
+import os
 from contextlib import asynccontextmanager, contextmanager
 from typing import (
     AsyncIterator,
@@ -156,6 +158,21 @@ class DB:
 
     async def create_pool(self, connection_string: str, settings, **kwargs):
         """Create a connection pool."""
+        if os.environ.get("IAM_AUTH_ENABLED") == "TRUE":
+            if "eo_readonly" in connection_string:
+                host = settings.postgres_host_reader
+                user = settings.postgres_user
+            else:
+                host = settings.postgres_host_writer
+                user = settings.postgres_user_writer
+            kwargs["password"] = functools.partial(
+                get_rds_token,
+                host,
+                settings.postgres_port,
+                user,
+                settings.aws_region,
+            )
+            kwargs["ssl"] = "require"
 
         pool = await asyncpg.create_pool(
             connection_string,
