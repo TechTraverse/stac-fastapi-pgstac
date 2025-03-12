@@ -158,11 +158,16 @@ class DB:
 
     async def create_pool(self, connection_string: str, settings, **kwargs):
         """Create a connection pool."""
+        print("connection string")
+
         if os.environ.get("IAM_AUTH_ENABLED") == "TRUE":
+            print("iam auth")
             if "eo_readonly" in connection_string:
+                print("read only")
                 host = settings.postgres_host_reader
                 user = settings.postgres_user
             else:
+                print("readwrite")
                 host = settings.postgres_host_writer
                 user = settings.postgres_user_writer
             kwargs["password"] = functools.partial(
@@ -174,7 +179,7 @@ class DB:
             )
             kwargs["ssl"] = "require"
 
-        pool = await asyncpg.create_pool(
+        pool = await asyncpg.create_pool_b(
             connection_string,
             min_size=settings.db_min_conn_size,
             max_size=settings.db_max_conn_size,
