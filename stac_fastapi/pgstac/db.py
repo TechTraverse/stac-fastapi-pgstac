@@ -80,8 +80,8 @@ async def connect_to_db(
         writepool = settings.writer_connection_string
 
     db = DB()
-    app.state.readpool = await db.create_pool(readpool, settings, "read")
-    app.state.writepool = await db.create_pool(writepool, settings, "write")
+    app.state.readpool = await db.create_pool(readpool, settings)
+    app.state.writepool = await db.create_pool(writepool, settings)
     app.state.get_connection = get_conn if get_conn else get_connection
 
 
@@ -156,28 +156,8 @@ class DB:
     _pool = attr.ib(default=None)
     _connection = attr.ib(default=None)
 
-    async def create_pool(self, connection_string: str, settings, mode: str, **kwargs):
+    async def create_pool(self, connection_string: str, settings):
         """Create a connection pool."""
-
-        if os.environ.get("IAM_AUTH_ENABLED") == "TRUE":
-            print("iam auth")
-            if mode == "read":
-                print("read only")
-                host = settings.postgres_host_reader
-                user = settings.postgres_user
-            else:
-                print("readwrite")
-                host = settings.postgres_host_writer
-                user = settings.postgres_user_writer
-            kwargs["password"] = functools.partial(
-                get_rds_token,
-                host,
-                settings.postgres_port,
-                user,
-                settings.aws_region,
-            )
-            kwargs["ssl"] = "require"
-
         pool = await asyncpg.create_pool_b(
             connection_string,
             min_size=settings.db_min_conn_size,
@@ -186,6 +166,5 @@ class DB:
             max_inactive_connection_lifetime=settings.db_max_inactive_conn_lifetime,
             init=con_init,
             server_settings=settings.server_settings.model_dump(),
-            **kwargs,
         )
         return pool
