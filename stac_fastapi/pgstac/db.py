@@ -156,10 +156,9 @@ class DB:
     _pool = attr.ib(default=None)
     _connection = attr.ib(default=None)
 
-    async def create_pool(self, connection_string: str, settings, mode):
+    async def create_pool(self, connection_string: str, settings, mode: str, **kwargs):
         """Create a connection pool."""
 
-        kwargs = {}
         if os.environ.get("IAM_AUTH_ENABLED") == "TRUE":
             print("iam auth")
             if mode == "read":
