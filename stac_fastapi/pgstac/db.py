@@ -1,6 +1,8 @@
 """Database connection handling."""
 
+import functools
 import json
+import os
 from contextlib import asynccontextmanager, contextmanager
 from typing import (
     AsyncIterator,
@@ -14,6 +16,7 @@ from typing import (
 )
 
 import attr
+import boto3
 import orjson
 from asyncpg import Connection, exceptions
 from buildpg import V, asyncpg, render
@@ -24,6 +27,26 @@ from stac_fastapi.types.errors import (
     ForeignKeyError,
     NotFoundError,
 )
+
+
+def get_rds_token(
+    host: Union[str, None],
+    port: Union[int, None],
+    user: Union[str, None],
+    region: Union[str, None],
+) -> str:
+    """Get RDS token for IAM auth"""
+    print(
+        f"Retrieving RDS IAM token with host: {host}, port: {port}, user: {user}, region: {region}"
+    )
+    rds_client = boto3.client("rds")
+    token = rds_client.generate_db_auth_token(
+        DBHostname=host,
+        Port=port,
+        DBUsername=user,
+        Region=region or rds_client.meta.region_name,
+    )
+    return token
 
 
 async def con_init(conn):
@@ -133,8 +156,26 @@ class DB:
     _pool = attr.ib(default=None)
     _connection = attr.ib(default=None)
 
-    async def create_pool(self, connection_string: str, settings):
+    async def create_pool(self, connection_string: str, settings, **kwargs):
         """Create a connection pool."""
+        settings = settings
+
+        if os.environ.get("IAM_AUTH_ENABLED") == "TRUE":
+            if "eo_readonly" in connection_string:
+                host = settings.postgres_host_reader
+                user = settings.postgres_user
+            else:
+                host = settings.postgres_host_writer
+                user = settings.postgres_user_writer
+            kwargs["password"] = functools.partial(
+                get_rds_token,
+                host,
+                settings.postgres_port,
+                user,
+                settings.aws_region,
+            )
+            kwargs["ssl"] = "require"
+
         pool = await asyncpg.create_pool(
             connection_string,
             min_size=settings.db_min_conn_size,
@@ -143,5 +184,6 @@ class DB:
             max_inactive_connection_lifetime=settings.db_max_inactive_conn_lifetime,
             init=con_init,
             server_settings=settings.server_settings.model_dump(),
+            **kwargs,
         )
         return pool
