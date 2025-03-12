@@ -159,6 +159,7 @@ class DB:
     async def create_pool(self, connection_string: str, settings, **kwargs):
         """Create a connection pool."""
         print(connection_string)
+        print(settings)
 
         if os.environ.get("IAM_AUTH_ENABLED") == "TRUE":
             print("iam auth")
