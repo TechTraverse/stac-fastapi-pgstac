@@ -2,6 +2,7 @@
 
 import functools
 import json
+import logging
 import os
 from contextlib import asynccontextmanager, contextmanager
 from typing import (
@@ -30,6 +31,8 @@ from stac_fastapi.types.errors import (
 
 from stac_fastapi.pgstac.config import PostgresSettings
 
+logger = logging.getLogger(__name__)
+
 
 def get_rds_token(
     host: Union[str, None],
@@ -38,7 +41,7 @@ def get_rds_token(
     region: Union[str, None],
 ) -> str:
     """Get RDS token for IAM auth"""
-    print(
+    logger.debug(
         f"Retrieving RDS IAM token with host: {host}, port: {port}, user: {user}, region: {region}"
     )
     rds_client = boto3.client("rds")
@@ -168,13 +171,10 @@ class DB:
         """Create a connection pool."""
 
         if os.environ.get("IAM_AUTH_ENABLED") == "TRUE":
-            print("iam auth")
             if mode == "read":
-                print("read only")
                 host = settings.postgres_host_reader
                 user = settings.postgres_user
             else:
-                print("readwrite")
                 host = settings.postgres_host_writer
                 user = settings.postgres_user_writer
             kwargs["password"] = functools.partial(
