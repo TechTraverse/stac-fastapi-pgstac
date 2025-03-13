@@ -1,11 +1,10 @@
 """Postgres API configuration."""
 
-from typing import Any, List, Optional, Type
+from typing import List, Optional, Type
 from urllib.parse import quote_plus as quote
 
-import boto3
 from pydantic import BaseModel, field_validator
-from pydantic_settings import SettingsConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from stac_fastapi.types.config import ApiSettings
 
 from stac_fastapi.pgstac.types.base_item_cache import (
@@ -44,7 +43,7 @@ class ServerSettings(BaseModel):
     model_config = SettingsConfigDict(extra="allow")
 
 
-class Settings(ApiSettings):
+class PostgresSettings(BaseSettings):
     """Postgres-specific API settings.
 
     Attributes:
@@ -78,79 +77,45 @@ class Settings(ApiSettings):
 
     server_settings: ServerSettings = ServerSettings()
 
+    model_config = {"env_file": ".env", "extra": "ignore"}
+
+    @property
+    def reader_connection_string(self):
+        """Create reader psql connection string."""
+        if self.postgres_pass is None:
+            reader_url = f"postgresql://{self.postgres_user}:{self.postgres_pass}@{self.postgres_host_reader}:{self.postgres_port}/{self.postgres_dbname}"
+        else:
+            reader_url = f"postgresql://{self.postgres_user}:{quote(self.postgres_pass)}@{self.postgres_host_reader}:{self.postgres_port}/{self.postgres_dbname}"
+        return reader_url
+
+    @property
+    def writer_connection_string(self):
+        """Create writer psql connection string."""
+        if self.postgres_pass is None:
+            writer_url = f"postgresql://{self.postgres_user_writer}:{self.postgres_pass}@{self.postgres_host_writer}:{self.postgres_port}/{self.postgres_dbname}"
+        else:
+            writer_url = f"postgresql://{self.postgres_user_writer}:{quote(self.postgres_pass)}@{self.postgres_host_writer}:{self.postgres_port}/{self.postgres_dbname}"
+        return writer_url
+
+    @property
+    def testing_connection_string(self):
+        """Create testing psql connection string."""
+        if self.postgres_pass is None:
+            test_url = f"postgresql://{self.postgres_user}:{self.postgres_pass}@{self.postgres_host_writer}:{self.postgres_port}/pgstactestdb"
+        else:
+            test_url = f"postgresql://{self.postgres_user}:{quote(self.postgres_pass)}@{self.postgres_host_writer}:{self.postgres_port}/pgstactestdb"
+        return test_url
+
+
+class Settings(ApiSettings):
     use_api_hydrate: bool = False
-    base_item_cache: Type[BaseItemCache] = DefaultBaseItemCache
     invalid_id_chars: List[str] = DEFAULT_INVALID_ID_CHARS
+    base_item_cache: Type[BaseItemCache] = DefaultBaseItemCache
 
     cors_origins: str = "*"
     cors_methods: str = "GET,POST,OPTIONS"
 
-    reader_connection_string: Optional[str] = None
-    writer_connection_string: Optional[str] = None
-
     testing: bool = False
-
-    @field_validator("reader_connection_string", mode="before")
-    def assemble_reader_connection(cls, v: Optional[str], info: Any) -> Any:
-        """Validate and assemble the database connection string."""
-        if isinstance(v, str):
-            return v
-
-        username = info.data["postgres_user"]
-        host = info.data.get("postgres_host_reader", "")
-        port = info.data.get("postgres_port", 5432)
-        dbname = info.data.get("postgres_dbname", "")
-
-        # Determine password/token based on IAM flag
-        if info.data.get("iam_auth_enabled"):
-            region = info.data.get("aws_region")
-            if not region:
-                raise ValueError(
-                    "aws_region must be provided when IAM authentication is enabled"
-                )
-            rds_client = boto3.client("rds", region_name=region)
-            password = rds_client.generate_db_auth_token(
-                DBHostname=host, Port=int(port), DBUsername=username, Region=region
-            )
-        else:
-            password = info.data["postgres_pass"]
-
-        reader_url = (
-            f"postgresql://{username}:{quote(str(password))}@{host}:{port}/{dbname}"
-        )
-
-        return reader_url
-
-    @field_validator("writer_connection_string", mode="before")
-    def assemble_writer_connection(cls, v: Optional[str], info: Any) -> Any:
-        """Validate and assemble the database connection string."""
-        if isinstance(v, str):
-            return v
-
-        username = info.data["postgres_user_writer"]
-        host = info.data.get("postgres_host_writer", "")
-        port = info.data.get("postgres_port", 5432)
-        dbname = info.data.get("postgres_dbname", "")
-
-        # Determine password/token based on IAM flag
-        if info.data.get("iam_auth_enabled"):
-            region = info.data.get("aws_region")
-            if not region:
-                raise ValueError(
-                    "aws_region must be provided when IAM authentication is enabled"
-                )
-            rds_client = boto3.client("rds", region_name=region)
-            password = rds_client.generate_db_auth_token(
-                DBHostname=host, Port=int(port), DBUsername=username, Region=region
-            )
-        else:
-            password = info.data["postgres_pass"]
-
-        writer_url = (
-            f"postgresql://{username}:{quote(str(password))}@{host}:{port}/{dbname}"
-        )
-
-        return writer_url
 
     @field_validator("cors_origins")
     def parse_cors_origin(cls, v):
@@ -161,12 +126,3 @@ class Settings(ApiSettings):
     def parse_cors_methods(cls, v):
         """Parse CORS methods."""
         return [method.strip() for method in v.split(",")]
-
-    @property
-    def testing_connection_string(self):
-        """Create testing psql connection string."""
-        return f"postgresql://{self.postgres_user}:{quote(str(self.postgres_pass))}@{self.postgres_host_writer}:{self.postgres_port}/pgstactestdb"
-
-    model_config = SettingsConfigDict(
-        **{**ApiSettings.model_config, **{"env_nested_delimiter": "__"}}
-    )

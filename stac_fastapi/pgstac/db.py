@@ -1,6 +1,8 @@
 """Database connection handling."""
 
+import functools
 import json
+import os
 from contextlib import asynccontextmanager, contextmanager
 from typing import (
     AsyncIterator,
@@ -14,6 +16,7 @@ from typing import (
 )
 
 import attr
+import boto3
 import orjson
 from asyncpg import Connection, exceptions
 from buildpg import V, asyncpg, render
@@ -24,6 +27,28 @@ from stac_fastapi.types.errors import (
     ForeignKeyError,
     NotFoundError,
 )
+
+from stac_fastapi.pgstac.config import PostgresSettings
+
+
+def get_rds_token(
+    host: Union[str, None],
+    port: Union[int, None],
+    user: Union[str, None],
+    region: Union[str, None],
+) -> str:
+    """Get RDS token for IAM auth"""
+    print(
+        f"Retrieving RDS IAM token with host: {host}, port: {port}, user: {user}, region: {region}"
+    )
+    rds_client = boto3.client("rds")
+    token = rds_client.generate_db_auth_token(
+        DBHostname=host,
+        Port=port,
+        DBUsername=user,
+        Region=region or rds_client.meta.region_name,
+    )
+    return token
 
 
 async def con_init(conn):
@@ -46,19 +71,25 @@ ConnectionGetter = Callable[[Request, Literal["r", "w"]], AsyncIterator[Connecti
 
 
 async def connect_to_db(
-    app: FastAPI, get_conn: Optional[ConnectionGetter] = None
+    app: FastAPI,
+    get_conn: Optional[ConnectionGetter] = None,
+    postgres_settings: Optional[PostgresSettings] = None,
 ) -> None:
     """Create connection pools & connection retriever on application."""
-    settings = app.state.settings
-    if app.state.settings.testing:
-        readpool = writepool = settings.testing_connection_string
+    app_settings = app.state.settings
+
+    if not postgres_settings:
+        postgres_settings = PostgresSettings()
+
+    if app_settings.testing:
+        readpool = writepool = postgres_settings.testing_connection_string
     else:
-        readpool = settings.reader_connection_string
-        writepool = settings.writer_connection_string
+        readpool = postgres_settings.reader_connection_string
+        writepool = postgres_settings.writer_connection_string
 
     db = DB()
-    app.state.readpool = await db.create_pool(readpool, settings)
-    app.state.writepool = await db.create_pool(writepool, settings)
+    app.state.readpool = await db.create_pool(readpool, postgres_settings, "read")
+    app.state.writepool = await db.create_pool(writepool, postgres_settings, "write")
     app.state.get_connection = get_conn if get_conn else get_connection
 
 
@@ -133,8 +164,28 @@ class DB:
     _pool = attr.ib(default=None)
     _connection = attr.ib(default=None)
 
-    async def create_pool(self, connection_string: str, settings):
+    async def create_pool(self, connection_string: str, settings, mode: str, **kwargs):
         """Create a connection pool."""
+
+        if os.environ.get("IAM_AUTH_ENABLED") == "TRUE":
+            print("iam auth")
+            if mode == "read":
+                print("read only")
+                host = settings.postgres_host_reader
+                user = settings.postgres_user
+            else:
+                print("readwrite")
+                host = settings.postgres_host_writer
+                user = settings.postgres_user_writer
+            kwargs["password"] = functools.partial(
+                get_rds_token,
+                host,
+                settings.postgres_port,
+                user,
+                settings.aws_region,
+            )
+            kwargs["ssl"] = "require"
+
         pool = await asyncpg.create_pool(
             connection_string,
             min_size=settings.db_min_conn_size,
@@ -143,5 +194,6 @@ class DB:
             max_inactive_connection_lifetime=settings.db_max_inactive_conn_lifetime,
             init=con_init,
             server_settings=settings.server_settings.model_dump(),
+            **kwargs,
         )
         return pool
