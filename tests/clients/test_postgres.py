@@ -6,7 +6,6 @@ from typing import Callable, Literal
 
 import pytest
 from fastapi import Request
-from pydantic import ValidationError
 from stac_pydantic import Collection, Item
 
 from stac_fastapi.pgstac.config import PostgresSettings
@@ -539,13 +538,13 @@ async def test_db_setup_works_with_env_vars(api_client, database, monkeypatch):
     await close_db_connection(api_client.app)
 
 
-# async def test_db_setup_fails_without_env_vars(api_client):
-#     """Test that the application fails to start if database environment variables are not set."""
-#     try:
-#         await connect_to_db(api_client.app)
-#     except ValidationError:
-#         await close_db_connection(api_client.app)
-#         pytest.raises(ValidationError)
+async def test_db_setup_fails_without_env_vars(api_client):
+    """Test that the application fails to start if database environment variables are not set."""
+    try:
+        await connect_to_db(api_client.app)
+    except ValidationError:
+        await close_db_connection(api_client.app)
+        pytest.raises(ValidationError)
 
 
 @asynccontextmanager

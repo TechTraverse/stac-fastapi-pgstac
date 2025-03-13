@@ -79,6 +79,9 @@ class PostgresSettings(BaseSettings):
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
+    if postgres_pass is None:
+        postgress_pass = "None"
+
     @property
     def reader_connection_string(self):
         """Create reader psql connection string."""
