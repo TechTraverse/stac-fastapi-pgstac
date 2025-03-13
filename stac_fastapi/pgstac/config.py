@@ -79,23 +79,32 @@ class PostgresSettings(BaseSettings):
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
-    if postgres_pass is None:
-        postgress_pass = "None"
-
     @property
     def reader_connection_string(self):
         """Create reader psql connection string."""
-        return f"postgresql://{self.postgres_user}:{quote(self.postgres_pass)}@{self.postgres_host_reader}:{self.postgres_port}/{self.postgres_dbname}"
+        if self.postgres_pass is None:
+            reader_url = f"postgresql://{self.postgres_user}:{self.postgres_pass}@{self.postgres_host_reader}:{self.postgres_port}/{self.postgres_dbname}"
+        else:
+            reader_url = f"postgresql://{self.postgres_user}:{quote(self.postgres_pass)}@{self.postgres_host_reader}:{self.postgres_port}/{self.postgres_dbname}"
+        return reader_url
 
     @property
     def writer_connection_string(self):
         """Create writer psql connection string."""
-        return f"postgresql://{self.postgres_user}:{quote(self.postgres_pass)}@{self.postgres_host_writer}:{self.postgres_port}/{self.postgres_dbname}"
+        if self.postgres_pass is None:
+            writer_url = f"postgresql://{self.postgres_user_writer}:{self.postgres_pass}@{self.postgres_host_writer}:{self.postgres_port}/{self.postgres_dbname}"
+        else:
+            writer_url = f"postgresql://{self.postgres_user_writer}:{quote(self.postgres_pass)}@{self.postgres_host_writer}:{self.postgres_port}/{self.postgres_dbname}"
+        return writer_url
 
     @property
     def testing_connection_string(self):
         """Create testing psql connection string."""
-        return f"postgresql://{self.postgres_user}:{quote(self.postgres_pass)}@{self.postgres_host_writer}:{self.postgres_port}/pgstactestdb"
+        if self.postgres_pass is None:
+            test_url = f"postgresql://{self.postgres_user}:{self.postgres_pass}@{self.postgres_host_writer}:{self.postgres_port}/pgstactestdb"
+        else:
+            test_url = f"postgresql://{self.postgres_user}:{quote(self.postgres_pass)}@{self.postgres_host_writer}:{self.postgres_port}/pgstactestdb"
+        return test_url
 
 
 class Settings(ApiSettings):
