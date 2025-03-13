@@ -28,8 +28,6 @@ from stac_fastapi.types.errors import (
     NotFoundError,
 )
 
-from stac_fastapi.pgstac.config import PostgresSettings
-
 
 def get_rds_token(
     host: Union[str, None],
@@ -71,25 +69,19 @@ ConnectionGetter = Callable[[Request, Literal["r", "w"]], AsyncIterator[Connecti
 
 
 async def connect_to_db(
-    app: FastAPI,
-    get_conn: Optional[ConnectionGetter] = None,
-    postgres_settings: Optional[PostgresSettings] = None,
+    app: FastAPI, get_conn: Optional[ConnectionGetter] = None
 ) -> None:
     """Create connection pools & connection retriever on application."""
-    app_settings = app.state.settings
-
-    if not postgres_settings:
-        postgres_settings = PostgresSettings()
-
-    if app_settings.testing:
-        readpool = writepool = postgres_settings.testing_connection_string
+    settings = app.state.settings
+    if app.state.settings.testing:
+        readpool = writepool = settings.testing_connection_string
     else:
-        readpool = postgres_settings.reader_connection_string
-        writepool = postgres_settings.writer_connection_string
+        readpool = settings.reader_connection_string
+        writepool = settings.writer_connection_string
 
     db = DB()
-    app.state.readpool = await db.create_pool(readpool, postgres_settings, "read")
-    app.state.writepool = await db.create_pool(writepool, postgres_settings, "write")
+    app.state.readpool = await db.create_pool(readpool, settings, "read")
+    app.state.writepool = await db.create_pool(writepool, settings, "write")
     app.state.get_connection = get_conn if get_conn else get_connection
 
 
@@ -186,7 +178,7 @@ class DB:
             )
             kwargs["ssl"] = "require"
 
-        pool = await asyncpg.create_pool(
+        pool = await asyncpg.create_pool_b(
             connection_string,
             min_size=settings.db_min_conn_size,
             max_size=settings.db_max_conn_size,
