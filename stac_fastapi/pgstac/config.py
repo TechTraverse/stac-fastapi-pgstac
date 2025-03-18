@@ -64,7 +64,7 @@ class PostgresSettings(BaseSettings):
     postgres_pass: Optional[str] = None
     postgres_host_reader: Optional[str] = None
     postgres_host_writer: Optional[str] = None
-    postgres_port: Optional[int] = None
+    postgres_port: Optional[int] = ""
     postgres_dbname: Optional[str] = None
 
     iam_auth_enabled: bool = False
