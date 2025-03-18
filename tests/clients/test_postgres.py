@@ -6,7 +6,6 @@ from typing import Callable, Literal
 
 import pytest
 from fastapi import Request
-from pydantic import ValidationError
 from stac_pydantic import Collection, Item
 
 from stac_fastapi.pgstac.config import PostgresSettings
