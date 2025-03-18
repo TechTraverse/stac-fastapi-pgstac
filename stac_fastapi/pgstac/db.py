@@ -1,7 +1,6 @@
 """Database connection handling."""
 
 import json
-import os
 from contextlib import asynccontextmanager, contextmanager
 from typing import (
     AsyncIterator,
@@ -145,11 +144,10 @@ class DB:
     async def create_pool(self, connection_string: str, settings, mode: str, **kwargs):
         """Create a connection pool."""
 
-        if os.environ.get("IAM_AUTH_ENABLED") == "TRUE":
-            if mode == "read":
-                merged_pool_kwargs = {**settings.reader_pool_kwargs, **(kwargs or {})}
-            else:
-                merged_pool_kwargs = {**settings.writer_pool_kwargs, **(kwargs or {})}
+        if mode == "read":
+            merged_pool_kwargs = {**settings.reader_pool_kwargs, **(kwargs or {})}
+        else:
+            merged_pool_kwargs = {**settings.writer_pool_kwargs, **(kwargs or {})}
 
         pool = await asyncpg.create_pool(
             connection_string,
