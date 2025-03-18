@@ -1,8 +1,9 @@
 """Postgres API configuration."""
 
-from typing import List, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 from urllib.parse import quote_plus as quote
 
+import boto3
 from pydantic import BaseModel, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from stac_fastapi.types.config import ApiSettings
@@ -44,7 +45,7 @@ class ServerSettings(BaseModel):
 
 
 class PostgresSettings(BaseSettings):
-    """Postgres-specific API settings.
+    """Postgres connection settings.
 
     Attributes:
         postgres_user: postgres username.
@@ -78,6 +79,60 @@ class PostgresSettings(BaseSettings):
     server_settings: ServerSettings = ServerSettings()
 
     model_config = {"env_file": ".env", "extra": "ignore"}
+
+    def get_rds_reader_token(self) -> str:
+        """Generate an RDS IAM token for authentication for reader instance."""
+        rds_client = boto3.client("rds")
+        reader_token = rds_client.generate_db_auth_token(
+            DBHostname=self.postgres_host_reader,
+            Port=self.postgres_port,
+            DBUsername=self.postgres_user,
+            Region=self.aws_region or rds_client.meta.region_name,
+        )
+        return reader_token
+
+    def get_rds_writer_token(self) -> str:
+        """Generate an RDS IAM token for authentication for writer instance."""
+        rds_client = boto3.client("rds")
+        writer_token = rds_client.generate_db_auth_token(
+            DBHostname=self.postgres_host_writer,
+            Port=self.postgres_port,
+            DBUsername=self.postgres_user_writer,
+            Region=self.aws_region or rds_client.meta.region_name,
+        )
+        return writer_token
+
+    @property
+    def reader_pool_kwargs(self) -> Dict[str, Any]:
+        """
+        Build the default connection parameters for the reader pool.
+
+        If IAM auth is enabled, use a dynamic password callable (bound to get_rds_token).
+        Otherwise, use a static password if provided.
+        """
+        reader_kwargs: Dict[str, Any] = {}
+        if self.iam_auth_enabled:
+            reader_kwargs["password"] = self.get_rds_reader_token
+            reader_kwargs["ssl"] = "require"
+        elif self.postgres_pass:
+            reader_kwargs["password"] = self.postgres_pass
+        return reader_kwargs
+
+    @property
+    def writer_pool_kwargs(self) -> Dict[str, Any]:
+        """
+        Build the default connection parameters for the writer pool.
+
+        If IAM auth is enabled, use a dynamic password callable (bound to get_rds_token).
+        Otherwise, use a static password if provided.
+        """
+        writer_kwargs: Dict[str, Any] = {}
+        if self.iam_auth_enabled:
+            writer_kwargs["password"] = self.get_rds_writer_token
+            writer_kwargs["ssl"] = "require"
+        elif self.postgres_pass:
+            writer_kwargs["password"] = self.postgres_pass
+        return writer_kwargs
 
     @property
     def reader_connection_string(self):
