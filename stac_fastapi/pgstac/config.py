@@ -172,6 +172,10 @@ class Settings(ApiSettings):
 
     testing: bool = False
 
+    openapi_url: str = "/api"
+    docs_url: str = "/api.html"
+    root_path: str = ""
+
     @field_validator("cors_origins")
     def parse_cors_origin(cls, v):
         """Parse CORS origins."""
