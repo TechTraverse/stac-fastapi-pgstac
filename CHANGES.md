@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [5.0.2] - 2025-04-07
+
+### Fixed
+
+- fix root-path handling when setting in uvicorn command
+- reduce `db_min_conn_size` to `1` to avoid creating too many db connections when starting the application
+
+## [5.0.1] - 2025-03-27
+
+### Fixed
+
+- fix media type for `self` links in `/search` responses
+
 ## [5.0.0] - 2025-03-10
 
 ### Changed
@@ -48,7 +61,7 @@
 
 ### Fixed
 
-- handle `next` and `dev` tokens now returned as links from pgstac>=0.9.0 (author @zstatmanweil, <https://github.com/stac-utils/stac-fastapi-pgstac/pull/140>)
+- handle `next` and `prev` tokens now returned as links from pgstac>=0.9.0 (author @zstatmanweil, <https://github.com/stac-utils/stac-fastapi-pgstac/pull/140>)
 - fix Docker compose file, so example data can be loaded into database (author @zstatmanweil, <https://github.com/stac-utils/stac-fastapi-pgstac/pull/142>)
 - fix `filter` extension implementation in `CoreCrudClient`
 
@@ -396,7 +409,9 @@ As a part of this release, this repository was extracted from the main
 
 - First PyPi release!
 
-[Unreleased]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/5.0.0..main>
+[Unreleased]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/5.0.2..main>
+[5.0.2]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/5.0.1..5.0.2>
+[5.0.1]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/5.0.0..5.0.1>
 [5.0.0]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/4.0.3..5.0.0>
 [4.0.3]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/4.0.2..4.0.3>
 [4.0.2]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/4.0.1..4.0.2>

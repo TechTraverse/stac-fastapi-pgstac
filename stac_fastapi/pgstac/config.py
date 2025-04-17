@@ -36,7 +36,12 @@ DEFAULT_INVALID_ID_CHARS = [
 
 
 class ServerSettings(BaseModel):
-    """Server runtime parameters."""
+    """Server runtime parameters.
+
+    Attributes:
+        search_path: Postgres search path. Defaults to "pgstac,public".
+        application_name: PgSTAC Application name. Defaults to 'pgstac'.
+    """
 
     search_path: str = "pgstac,public"
     application_name: str = "pgstac"
@@ -71,7 +76,7 @@ class PostgresSettings(BaseSettings):
     iam_auth_enabled: bool = False
     aws_region: Optional[str] = None
 
-    db_min_conn_size: int = 10
+    db_min_conn_size: int = 1
     db_max_conn_size: int = 10
     db_max_queries: int = 50000
     db_max_inactive_conn_lifetime: float = 300
@@ -163,6 +168,8 @@ class PostgresSettings(BaseSettings):
 
 
 class Settings(ApiSettings):
+    """Api Settings."""
+
     use_api_hydrate: bool = False
     invalid_id_chars: List[str] = DEFAULT_INVALID_ID_CHARS
     base_item_cache: Type[BaseItemCache] = DefaultBaseItemCache
