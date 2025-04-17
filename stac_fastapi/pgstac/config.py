@@ -179,6 +179,8 @@ class Settings(ApiSettings):
 
     testing: bool = False
 
+    openapi_url: str = "/api"
+    docs_url: str = "/api.html"
     root_path: str = ""
 
     @field_validator("cors_origins")
