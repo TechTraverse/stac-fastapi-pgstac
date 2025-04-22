@@ -38,5 +38,7 @@ jobs:
           context: .
           file: Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: type=sha,format-short
           labels: ${{ steps.meta.outputs.labels }}
+        env:
+          DOCKER_METADATA_SHORT_SHA_LENGTH: 8
