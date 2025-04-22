@@ -19,11 +19,6 @@ jobs:
         run: |
             repo_name=${{ github.repository }}
             echo "repo=${repo_name,,}" >> $GITHUB_OUTPUT
-      - name: Get commit short sha
-        id: get-short-sha
-        run: |
-          shortSha=$(git rev-parse --short ${{ github.sha }})
-          echo "commit_short_sha=$shortSha" >> $GITHUB_OUTPUT
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Log in to the Container registry
@@ -32,6 +27,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get commit short sha
+        id: get-short-sha
+        run: |
+          shortSha=$(git rev-parse --short ${{ github.sha }})
+          echo "commit_short_sha=$shortSha" >> $GITHUB_OUTPUT
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5.7.0
