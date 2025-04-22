@@ -38,7 +38,9 @@ jobs:
           calculatedSha=$(git rev-parse --short ${{ github.sha }})
           echo "short_sha=$calculatedSha" >> $GITHUB_OUTPUT
       - name: Confirm git commit SHA output
-        run: echo ${{ steps.vars.outputs.short_sha }}
+        run: |
+          echo ${{ steps.vars.outputs.short_sha }}
+          echo ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push Docker image
         uses: docker/build-push-action@v6.15.0
         with:
