@@ -43,5 +43,5 @@ jobs:
           context: .
           file: Dockerfile
           push: true
-          tags: ${{ steps.meta.images }}:${{ steps.get-short-sha.outputs.commit_short_sha }}
+          tags: ghcr.io/${{ steps.downcase.outputs.repo }}:${{ steps.get-short-sha.outputs.commit_short_sha }}
           labels: ${{ steps.meta.outputs.labels }}
