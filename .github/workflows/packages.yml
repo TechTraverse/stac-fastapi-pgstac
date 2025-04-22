@@ -19,6 +19,11 @@ jobs:
         run: |
             repo_name=${{ github.repository }}
             echo "repo=${repo_name,,}" >> $GITHUB_OUTPUT
+      - name: Get commit short sha
+        id: get-short-sha
+        run: |
+          shortSha=$(git rev-parse --short ${{ github.sha }})
+          echo "commit_short_sha=$shortSha" >> $GITHUB_OUTPUT
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Log in to the Container registry
@@ -32,13 +37,11 @@ jobs:
         uses: docker/metadata-action@v5.7.0
         with:
           images: ghcr.io/${{ steps.downcase.outputs.repo }}
-          tags: |
-            type=sha,format=short
       - name: Build and push Docker image
         uses: docker/build-push-action@v6.15.0
         with:
           context: .
           file: Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta.images }}:${{ steps.get-short-sha.outputs.commit_short_sha }}
           labels: ${{ steps.meta.outputs.labels }}
