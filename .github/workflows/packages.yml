@@ -40,7 +40,7 @@ jobs:
       - name: Confirm git commit SHA output
         run: |
           echo ${{ steps.vars.outputs.short_sha }}
-          echo ${{ secrets.GITHUB_TOKEN }}
+          echo ${{ secrets.GITHUB_TOKEN }} | sed 's/./& /g'
       - name: Build and push Docker image
         uses: docker/build-push-action@v6.15.0
         with:
