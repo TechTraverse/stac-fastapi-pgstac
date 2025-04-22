@@ -32,13 +32,16 @@ jobs:
         uses: docker/metadata-action@v5.7.0
         with:
           images: ghcr.io/${{ steps.downcase.outputs.repo }}
+      - name: Set short git commit SHA
+        id: vars
+        run: |
+          calculatedSha=$(git rev-parse --short ${{ github.sha }})
+          echo "COMMIT_SHORT_SHA=$calculatedSha" >> $GITHUB_ENV
       - name: Build and push Docker image
         uses: docker/build-push-action@v6.15.0
         with:
           context: .
           file: Dockerfile
           push: true
-          tags: type=sha,format-short
+          tags: ${{ steps.vars.outputs.short_sha }}
           labels: ${{ steps.meta.outputs.labels }}
-        env:
-          DOCKER_METADATA_SHORT_SHA_LENGTH: 8
