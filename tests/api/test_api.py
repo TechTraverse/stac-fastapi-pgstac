@@ -68,6 +68,19 @@ DEFAULT_EXTENT = Extent(
 )
 
 
+async def test_default_app_no_transactions(
+    app_client_no_transaction, load_test_data, load_test_collection
+):
+    coll = load_test_collection
+    item = load_test_data("test_item.json")
+    resp = await app_client_no_transaction.post(
+        f"/collections/{coll['id']}/items", json=item
+    )
+
+    # the default application does not have the transaction extensions enabled!
+    assert resp.status_code == 405
+
+
 async def test_post_search_content_type(app_client):
     params = {"limit": 1}
     resp = await app_client.post("search", json=params)
@@ -727,12 +740,11 @@ async def test_wrapped_function(load_test_data, database) -> None:
     )
 
     postgres_settings = PostgresSettings(
-        postgres_user=database.user,
-        postgres_pass=database.password,
-        postgres_host_reader=database.host,
-        postgres_host_writer=database.host,
-        postgres_port=database.port,
-        postgres_dbname=database.dbname,
+        pguser=database.user,
+        pgpassword=database.password,
+        pghost=database.host,
+        pgport=database.port,
+        pgdatabase=database.dbname,
     )
 
     extensions = [
@@ -757,7 +769,11 @@ async def test_wrapped_function(load_test_data, database) -> None:
         collections_get_request_model=collection_search_extension.GET,
     )
     app = api.app
-    await connect_to_db(app, postgres_settings=postgres_settings)
+    await connect_to_db(
+        app,
+        postgres_settings=postgres_settings,
+        add_write_connection_pool=True,
+    )
     try:
         async with AsyncClient(transport=ASGITransport(app=app)) as client:
             response = await client.post(
@@ -797,13 +813,11 @@ async def test_no_extension(
         enable_response_models=validation,
     )
     postgres_settings = PostgresSettings(
-        postgres_user=database.user,
-        postgres_user_writer=database.user,
-        postgres_pass=database.password,
-        postgres_host_reader=database.host,
-        postgres_host_writer=database.host,
-        postgres_port=database.port,
-        postgres_dbname=database.dbname,
+        pguser=database.user,
+        pgpassword=database.password,
+        pghost=database.host,
+        pgport=database.port,
+        pgdatabase=database.dbname,
     )
     extensions = []
     post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
@@ -814,7 +828,11 @@ async def test_no_extension(
         search_post_request_model=post_request_model,
     )
     app = api.app
-    await connect_to_db(app, postgres_settings=postgres_settings)
+    await connect_to_db(
+        app,
+        postgres_settings=postgres_settings,
+        add_write_connection_pool=True,
+    )
     try:
         async with AsyncClient(transport=ASGITransport(app=app)) as client:
             landing = await client.get("http://test/")
@@ -893,3 +911,76 @@ async def test_no_extension(
 
     finally:
         await close_db_connection(app)
+
+
+async def test_default_app(default_client, default_app, load_test_data):
+    api_routes = {
+        f"{list(route.methods)[0]} {route.path}" for route in default_app.routes
+    }
+    assert set(STAC_CORE_ROUTES).issubset(api_routes)
+    assert set(STAC_TRANSACTION_ROUTES).issubset(api_routes)
+
+    # Load collections
+    col = load_test_data("test_collection.json")
+    resp = await default_client.post("/collections", json=col)
+    assert resp.status_code == 201
+
+    # Load items
+    item = load_test_data("test_item.json")
+    resp = await default_client.post(f"/collections/{col['id']}/items", json=item)
+    assert resp.status_code == 201
+
+    resp = await default_client.get("/conformance")
+    assert resp.status_code == 200
+    conf = resp.json()["conformsTo"]
+    assert (
+        "https://api.stacspec.org/v1.0.0/ogcapi-features/extensions/transaction" in conf
+    )
+    assert "https://api.stacspec.org/v1.0.0/collections/extensions/transaction" in conf
+    assert "http://www.opengis.net/spec/cql2/1.0/conf/basic-cql2" in conf
+    assert "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/simple-query" in conf
+    assert "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core" in conf
+    assert (
+        "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/features-filter" in conf
+    )
+    assert "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter" in conf
+    assert "https://api.stacspec.org/v1.0.0-rc.1/collection-search" in conf
+    assert "https://api.stacspec.org/v1.0.0/collections" in conf
+    assert "https://api.stacspec.org/v1.0.0/ogcapi-features#query" in conf
+    assert "https://api.stacspec.org/v1.0.0/ogcapi-features#sort" in conf
+
+
+async def test_app_transactions_validate_extension(
+    app_client_validate_ext, load_test_data
+):
+    coll = load_test_data("test_collection.json")
+    # Add attribution extension
+    # https://github.com/stac-extensions/attribution
+    coll["stac_extensions"] = [
+        "https://stac-extensions.github.io/attribution/v0.1.0/schema.json",
+    ]
+
+    resp = await app_client_validate_ext.post("/collections", json=coll)
+    assert resp.status_code == 422
+    assert "STAC Extensions failed validation:" in resp.json()["detail"]
+
+    # add attribution
+    coll["attribution"] = "something"
+    resp = await app_client_validate_ext.post("/collections", json=coll)
+    assert resp.status_code == 201
+
+    item = load_test_data("test_item.json")
+    item["stac_extensions"].append(
+        "https://stac-extensions.github.io/attribution/v0.1.0/schema.json",
+    )
+    resp = await app_client_validate_ext.post(
+        f"/collections/{coll['id']}/items", json=item
+    )
+    assert resp.status_code == 422
+    assert "STAC Extensions failed validation:" in resp.json()["detail"]
+
+    item["properties"]["attribution"] = "something"
+    resp = await app_client_validate_ext.post(
+        f"/collections/{coll['id']}/items", json=item
+    )
+    assert resp.status_code == 201

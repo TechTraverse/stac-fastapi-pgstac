@@ -9,10 +9,9 @@ import attr
 import orjson
 from asyncpg.exceptions import InvalidDatetimeFormatError
 from buildpg import render
+from cql2 import Expr
 from fastapi import HTTPException, Request
 from pydantic import ValidationError
-from pygeofilter.backends.cql2_json import to_cql2
-from pygeofilter.parsers.cql2_text import parse as parse_cql2_text
 from pypgstac.hydration import hydrate
 from stac_fastapi.api.models import JSONResponse
 from stac_fastapi.types.core import AsyncBaseCoreClient, Relations
@@ -55,8 +54,7 @@ class CoreCrudClient(AsyncBaseCoreClient):
         sortby: Optional[str] = None,
         filter_expr: Optional[str] = None,
         filter_lang: Optional[str] = None,
-        q: Optional[List[str]] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Collections:
         """Cross catalog search (GET).
 
@@ -87,8 +85,14 @@ class CoreCrudClient(AsyncBaseCoreClient):
                 sortby=sortby,
                 filter_query=filter_expr,
                 filter_lang=filter_lang,
-                q=q,
+                **kwargs,
             )
+
+            # NOTE: `FreeTextExtension` - pgstac will only accept `str` so we need to
+            # join the list[str] with ` OR `
+            # ref: https://github.com/stac-utils/stac-fastapi-pgstac/pull/263
+            if q := clean_args.pop("q", None):
+                clean_args["q"] = " OR ".join(q) if isinstance(q, list) else q
 
             async with request.app.state.get_connection(request, "r") as conn:
                 q, p = render(
@@ -158,7 +162,10 @@ class CoreCrudClient(AsyncBaseCoreClient):
         )
 
     async def get_collection(
-        self, collection_id: str, request: Request, **kwargs
+        self,
+        collection_id: str,
+        request: Request,
+        **kwargs: Any,
     ) -> Collection:
         """Get collection by id.
 
@@ -203,7 +210,9 @@ class CoreCrudClient(AsyncBaseCoreClient):
         return Collection(**collection)
 
     async def _get_base_item(
-        self, collection_id: str, request: Request
+        self,
+        collection_id: str,
+        request: Request,
     ) -> Dict[str, Any]:
         """Get the base item of a collection for use in rehydrating full item collection properties.
 
@@ -360,7 +369,7 @@ class CoreCrudClient(AsyncBaseCoreClient):
         filter_expr: Optional[str] = None,
         filter_lang: Optional[str] = None,
         token: Optional[str] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> ItemCollection:
         """Get all items from a specific collection.
 
@@ -392,6 +401,7 @@ class CoreCrudClient(AsyncBaseCoreClient):
             filter_lang=filter_lang,
             fields=fields,
             sortby=sortby,
+            **kwargs,
         )
 
         try:
@@ -418,7 +428,11 @@ class CoreCrudClient(AsyncBaseCoreClient):
         return ItemCollection(**item_collection)
 
     async def get_item(
-        self, item_id: str, collection_id: str, request: Request, **kwargs
+        self,
+        item_id: str,
+        collection_id: str,
+        request: Request,
+        **kwargs: Any,
     ) -> Item:
         """Get item by id.
 
@@ -446,7 +460,10 @@ class CoreCrudClient(AsyncBaseCoreClient):
         return Item(**item_collection["features"][0])
 
     async def post_search(
-        self, search_request: PgstacSearch, request: Request, **kwargs
+        self,
+        search_request: PgstacSearch,
+        request: Request,
+        **kwargs: Any,
     ) -> ItemCollection:
         """Cross catalog search (POST).
 
@@ -490,7 +507,7 @@ class CoreCrudClient(AsyncBaseCoreClient):
         filter_expr: Optional[str] = None,
         filter_lang: Optional[str] = None,
         token: Optional[str] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> ItemCollection:
         """Cross catalog search (GET).
 
@@ -517,6 +534,7 @@ class CoreCrudClient(AsyncBaseCoreClient):
             sortby=sortby,
             filter_query=filter_expr,
             filter_lang=filter_lang,
+            **kwargs,
         )
 
         try:
@@ -551,16 +569,18 @@ class CoreCrudClient(AsyncBaseCoreClient):
         sortby: Optional[str] = None,
         filter_query: Optional[str] = None,
         filter_lang: Optional[str] = None,
-        q: Optional[List[str]] = None,
+        q: Optional[Union[str, List[str]]] = None,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """Clean up search arguments to match format expected by pgstac"""
         if filter_query:
             if filter_lang == "cql2-text":
-                filter_query = to_cql2(parse_cql2_text(filter_query))
-                filter_lang = "cql2-json"
-
-            base_args["filter"] = orjson.loads(filter_query)
-            base_args["filter_lang"] = filter_lang
+                e = Expr(filter_query)
+                base_args["filter"] = e.to_json()
+                base_args["filter_lang"] = "cql2-json"
+            else:
+                base_args["filter"] = orjson.loads(filter_query)
+                base_args["filter_lang"] = filter_lang
 
         if datetime:
             base_args["datetime"] = datetime
@@ -596,7 +616,7 @@ class CoreCrudClient(AsyncBaseCoreClient):
             base_args["fields"] = {"include": includes, "exclude": excludes}
 
         if q:
-            base_args["q"] = " OR ".join(q)
+            base_args["q"] = q
 
         # Remove None values from dict
         clean = {}
@@ -605,3 +625,49 @@ class CoreCrudClient(AsyncBaseCoreClient):
                 clean[k] = v
 
         return clean
+
+
+async def health_check(request: Request) -> Union[Dict, JSONResponse]:
+    """PgSTAC HealthCheck."""
+    resp = {
+        "status": "UP",
+        "lifespan": {
+            "status": "UP",
+        },
+    }
+    if not hasattr(request.app.state, "get_connection"):
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "DOWN",
+                "lifespan": {
+                    "status": "DOWN",
+                    "message": "application lifespan wasn't run",
+                },
+                "pgstac": {
+                    "status": "DOWN",
+                    "message": "Could not connect to database",
+                },
+            },
+        )
+
+    try:
+        async with request.app.state.get_connection(request, "r") as conn:
+            q, p = render(
+                """SELECT pgstac.get_version();""",
+            )
+            version = await conn.fetchval(q, *p)
+    except Exception as e:
+        resp["status"] = "DOWN"
+        resp["pgstac"] = {
+            "status": "DOWN",
+            "message": str(e),
+        }
+        return JSONResponse(status_code=503, content=resp)
+
+    resp["pgstac"] = {
+        "status": "UP",
+        "pgstac_version": version,
+    }
+
+    return resp

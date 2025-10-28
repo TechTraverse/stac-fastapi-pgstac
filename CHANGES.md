@@ -2,6 +2,86 @@
 
 ## [Unreleased]
 
+## [6.0.2] - 2025-10-03
+
+- add `CORS_ORIGIN_REGEX` settings ([#298](https://github.com/stac-utils/stac-fastapi-pgstac/pull/298))
+
+## [6.0.1] - 2025-09-30
+
+- fix: ignore 'rel:items' entries when generating links ([#294](https://github.com/stac-utils/stac-fastapi-pgstac/pull/294))
+
+## [6.0.0] - 2025-08-08
+
+### Fixed
+
+- fix root-path handling when setting via env var or on app instance
+- Allow `q` parameter to be a `str` not a `list[str]` for Advanced Free-Text extension
+- do not `unquote` parameters for next/prev links
+
+### Changed
+
+- rename `POSTGRES_HOST_READER` to `PGHOST` in config **breaking change**
+- rename `POSTGRES_USER` to `PGUSER` in config **breaking change**
+- rename `POSTGRES_PASS` to `PGPASSWORD` in config **breaking change**
+- rename `POSTGRES_PORT` to `PGPORT` in config **breaking change**
+- rename `POSTGRES_DBNAME` to `PGDATABASE` in config **breaking change**
+
+  ```python
+  from stac_fastapi.pgstac.config import PostgresSettings
+
+  # before
+  settings = PostgresSettings(
+      postgres_user="user",
+      postgres_pass="password",
+      postgres_host_reader="0.0.0.0",
+      postgres_host_writer="0.0.0.0",
+      postgres_port=1111,
+      postgres_dbname="pgstac",
+  )
+
+  # now
+  settings = PostgresSettings(
+      pguser="user",
+      pgpassword="password",
+      pghost="0.0.0.0",
+      pgport=1111,
+      pgdatabase="pgstac",
+  )
+  ```
+
+- rename `reader_connection_string` to `connection_string` in `PostgresSettings` class **breaking change**
+- add `ENABLE_TRANSACTIONS_EXTENSIONS` env variable to enable `transaction` extensions
+- disable transaction and bulk_transactions extensions by default **breaking change**
+- update `stac-fastapi-*` version requirements to `>=5.2,<6.0`
+- add pgstac health-check in `/_mgmt/health`
+- switch from using `pygeofilter` to `cql2`
+- publish arm64 Docker images
+
+### Added
+
+- add `validate_extensions` setting that enables validation of `stac_extensions` from submitted STAC objects
+  using the `stac_pydantic.extensions.validate_extensions` utility. Applicable only when `TransactionExtension`
+  is active.
+- add `validation` extra requirement to install dependencies of `stac_pydantic` required for extension validation
+- add `write_connection_pool` option in `stac_fastapi.pgstac.db.connect_to_db` function
+- add `write_postgres_settings` option in `stac_fastapi.pgstac.db.connect_to_db` function to set specific settings for the `writer` DB connection pool
+- add specific error message when trying to create `Item` with null geometry (not supported by PgSTAC)
+- add support for Patch in transactions extension
+- CORS authentication setting
+
+### removed
+
+- `stac_fastapi.pgstac.db.DB` class
+- `POSTGRES_HOST_WRITER` in config
+- `writer_connection_string` in `PostgresSettings` class
+- `testing_connection_string` in `PostgresSettings` class
+
+## [5.0.3] - 2025-07-23
+
+### Fixed
+
+- fix root-path handling when setting via env var or on app instance ([#270](https://github.com/stac-utils/stac-fastapi-pgstac/pull/270))
+
 ## [5.0.2] - 2025-04-07
 
 ### Fixed
@@ -76,7 +156,7 @@
 
 ## [3.0.1] - 2024-11-14
 
-- Enable runtime `CORS` configuration using environment variables (`CORS_ORIGIN="https://...,https://..."`, `CORS_METHODS="PUT,OPTIONS"`) (<https://github.com/stac-utils/stac-fastapi-pgstac/pull/168>)
+- Enable runtime `CORS` configuration using environment variables (`CORS_ORIGINS="https://...,https://..."`, `CORS_METHODS="PUT,OPTIONS"`) (<https://github.com/stac-utils/stac-fastapi-pgstac/pull/168>)
 
 ## [3.0.0] - 2024-08-02
 
@@ -175,7 +255,7 @@ As a part of this release, this repository was extracted from the main
 ### Added
 
 - Nginx service as second docker-compose stack to demonstrate proxy ([#503](https://github.com/stac-utils/stac-fastapi/pull/503))
-- Validation checks in CI using [stac-api-validator](github.com/stac-utils/stac-api-validator) ([#508](https://github.com/stac-utils/stac-fastapi/pull/508))
+- Validation checks in CI using [stac-api-validator](https://github.com/stac-utils/stac-api-validator) ([#508](https://github.com/stac-utils/stac-fastapi/pull/508))
 - Required links to the sqlalchemy ItemCollection endpoint ([#508](https://github.com/stac-utils/stac-fastapi/pull/508))
 - Publication of docker images to GHCR ([#525](https://github.com/stac-utils/stac-fastapi/pull/525))
 
@@ -409,7 +489,11 @@ As a part of this release, this repository was extracted from the main
 
 - First PyPi release!
 
-[Unreleased]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/5.0.2..main>
+[Unreleased]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/6.0.2..main>
+[6.0.2]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/6.0.1..6.0.2>
+[6.0.1]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/6.0.0..6.0.1>
+[6.0.0]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/5.0.3..6.0.0>
+[5.0.3]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/5.0.2..5.0.3>
 [5.0.2]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/5.0.1..5.0.2>
 [5.0.1]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/5.0.0..5.0.1>
 [5.0.0]: <https://github.com/stac-utils/stac-fastapi-pgstac/compare/4.0.3..5.0.0>

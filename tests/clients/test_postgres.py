@@ -151,6 +151,20 @@ async def test_create_item_bad_body(
     assert resp.status_code == 400
 
 
+async def test_create_item_no_geometry(
+    app_client, load_test_data: Callable, load_test_collection
+):
+    """Items with missing or null Geometry should return an error"""
+    coll = load_test_collection
+
+    item = load_test_data("test_item.json")
+    _ = item.pop("bbox")
+    item["geometry"] = None
+    resp = await app_client.post(f"/collections/{coll['id']}/items", json=item)
+    assert resp.status_code == 400
+    assert "Geometry is required in pgstac." in resp.json()["detail"]
+
+
 async def test_update_item(app_client, load_test_collection, load_test_item):
     coll = load_test_collection
     item = load_test_item
@@ -526,13 +540,11 @@ async def test_create_bulk_items_id_mismatch(
 
 async def test_db_setup_works_with_env_vars(api_client, database, monkeypatch):
     """Test that the application starts successfully if the POSTGRES_* environment variables are set"""
-    monkeypatch.setenv("POSTGRES_USER", database.user)
-    monkeypatch.setenv("POSTGRES_USER_WRITER", database.user)
-    monkeypatch.setenv("POSTGRES_PASS", database.password)
-    monkeypatch.setenv("POSTGRES_HOST_READER", database.host)
-    monkeypatch.setenv("POSTGRES_HOST_WRITER", database.host)
-    monkeypatch.setenv("POSTGRES_PORT", str(database.port))
-    monkeypatch.setenv("POSTGRES_DBNAME", database.dbname)
+    monkeypatch.setenv("PGUSER", database.user)
+    monkeypatch.setenv("PGPASSWORD", database.password)
+    monkeypatch.setenv("PGHOST", database.host)
+    monkeypatch.setenv("PGPORT", str(database.port))
+    monkeypatch.setenv("PGDATABASE", database.dbname)
 
     await connect_to_db(api_client.app)
     await close_db_connection(api_client.app)
@@ -565,13 +577,11 @@ class TestDbConnect:
         app fixture override to setup app with a customized db connection getter
         """
         postgres_settings = PostgresSettings(
-            postgres_user=database.user,
-            postgres_user_writer=database.user,
-            postgres_pass=database.password,
-            postgres_host_reader=database.host,
-            postgres_host_writer=database.host,
-            postgres_port=database.port,
-            postgres_dbname=database.dbname,
+            pguser=database.user,
+            pgpassword=database.password,
+            pghost=database.host,
+            pgport=database.port,
+            pgdatabase=database.dbname,
         )
 
         logger.debug("Customizing app setup")

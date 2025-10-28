@@ -9,16 +9,18 @@ install_requires = [
     "attrs",
     "orjson",
     "pydantic",
-    "stac_pydantic==3.1.*",
-    "stac-fastapi.api>=5.1,<6.0",
-    "stac-fastapi.extensions>=5.1,<6.0",
-    "stac-fastapi.types>=5.1,<6.0",
+    "stac-fastapi.api>=6.0,<7.0",
+    "stac-fastapi.extensions>=6.0,<7.0",
+    "stac-fastapi.types>=6.0,<7.0",
     "asyncpg",
     "buildpg",
     "brotli_asgi",
-    "pygeofilter>=0.2",
+    "cql2>=0.3.6",
     "pypgstac>=0.8,<0.10",
     "boto3",
+    "typing_extensions>=4.9.0",
+    "jsonpatch>=1.33.0",
+    "json-merge-patch>=0.3.0",
 ]
 
 extra_reqs = {
@@ -28,7 +30,7 @@ extra_reqs = {
         "pytest-postgresql",
         "pytest",
         "pytest-cov",
-        "pytest-asyncio>=0.17,<0.26.0",
+        "pytest-asyncio>=0.17,<1.3",
         "pre-commit",
         "requests",
         "shapely",
@@ -44,8 +46,11 @@ extra_reqs = {
         "griffe-inherited-docstrings>=1.0.0",
         "mkdocstrings[python]>=0.25.1",
     ],
-    "server": ["uvicorn[standard]==0.34.0"],
+    "server": ["uvicorn[standard]==0.37.0"],
     "awslambda": ["mangum"],
+    "validation": [
+        "stac_pydantic[validation]",
+    ],
 }
 
 
