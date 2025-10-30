@@ -51,6 +51,7 @@ jobs:
         image: ghcr.io/stac-utils/pgstac:v0.9.8
         env:
           POSTGRES_USER: username
+          POSTGRES_USER_WRITER: username
           POSTGRES_PASSWORD: password
           POSTGRES_DB: postgis
           PGUSER: username

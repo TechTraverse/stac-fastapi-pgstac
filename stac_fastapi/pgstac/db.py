@@ -46,16 +46,24 @@ async def con_init(conn):
 ConnectionGetter = Callable[[Request, Literal["r", "w"]], AsyncIterator[Connection]]
 
 
-async def _create_pool(settings: PostgresSettings) -> Pool:
+async def _create_pool(
+    settings: PostgresSettings,
+    connection_string: Optional[str] = None,
+    pool_kwargs: Optional[Dict] = None,
+) -> Pool:
     """Create a connection pool."""
+    conn_str = connection_string or settings.connection_string
+    kwargs = pool_kwargs or {}
+    
     return await asyncpg.create_pool(
-        settings.connection_string,
+        conn_str,
         min_size=settings.db_min_conn_size,
         max_size=settings.db_max_conn_size,
         max_queries=settings.db_max_queries,
         max_inactive_connection_lifetime=settings.db_max_inactive_conn_lifetime,
         init=con_init,
         server_settings=settings.server_settings.model_dump(),
+        **kwargs,
     )
 
 
@@ -70,13 +78,23 @@ async def connect_to_db(
     if not postgres_settings:
         postgres_settings = PostgresSettings()
 
-    app.state.readpool = await _create_pool(postgres_settings)
+    # Create read pool with reader connection string and pool kwargs
+    app.state.readpool = await _create_pool(
+        postgres_settings,
+        connection_string=postgres_settings.reader_connection_string,
+        pool_kwargs=postgres_settings.reader_pool_kwargs,
+    )
 
     if add_write_connection_pool:
         if not write_postgres_settings:
             write_postgres_settings = postgres_settings
 
-        app.state.writepool = await _create_pool(write_postgres_settings)
+        # Create write pool with writer connection string and pool kwargs
+        app.state.writepool = await _create_pool(
+            write_postgres_settings,
+            connection_string=write_postgres_settings.writer_connection_string,
+            pool_kwargs=write_postgres_settings.writer_pool_kwargs,
+        )
 
     app.state.get_connection = get_conn if get_conn else get_connection
 

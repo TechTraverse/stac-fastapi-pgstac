@@ -21,6 +21,7 @@ install_requires = [
     "typing_extensions>=4.9.0",
     "jsonpatch>=1.33.0",
     "json-merge-patch>=0.3.0",
+    "boto3>=1.40",
 ]
 
 extra_reqs = {
