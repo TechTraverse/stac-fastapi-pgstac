@@ -12,6 +12,14 @@ services:
       - PGDATABASE=postgis
       - PGHOST=database
       - PGPORT=5432
+      # Optional: Enable read/write split by specifying separate hosts
+      # Note: PGHOST is still required and acts as fallback
+      # - PGHOST_READER=read-replica-host
+      # - PGHOST_WRITER=primary-host
+      # - POSTGRES_USER_WRITER=writer-username
+      # Optional: For AWS RDS IAM authentication
+      # - IAM_AUTH_ENABLED=true
+      # - AWS_REGION=us-east-1
       - WEB_CONCURRENCY=10
       - VSI_CACHE=TRUE
       - GDAL_HTTP_MERGE_CONSECUTIVE_RANGES=YES
@@ -46,6 +54,7 @@ services:
     image: ghcr.io/stac-utils/pgstac:v0.9.2
     environment:
       - POSTGRES_USER=username
+      - POSTGRES_USER_WRITER=username
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=postgis
       - PGUSER=username

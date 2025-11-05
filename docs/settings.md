@@ -24,6 +24,11 @@ Since `6.0.0`, the transaction extension is not enabled by default. To add the t
 - `PGHOST`: hostname for the connection
 - `PGPORT`: database port
 - `PGDATABASE`: database name
+- `PGHOST_READER`: Optional hostname for read replica connection
+- `PGHOST_WRITER`: Optional hostname for writer/primary database connection
+- `POSTGRES_USER_WRITER`: Optional separate username for writer connection
+- `IAM_AUTH_ENABLED`: Enable AWS RDS IAM authentication. Defaults to `False`
+- `AWS_REGION`: AWS region for IAM token generation (optional, uses boto3 default if not set)
 - `DB_MIN_CONN_SIZE`: Number of connection the pool will be initialized with. Defaults to `1`
 - `DB_MAX_CONN_SIZE` Max number of connections in the pool. Defaults to `10`
 - `DB_MAX_QUERIES`: Number of queries after a connection is closed and replaced with a new connection. Defaults to `50000`
@@ -31,18 +36,39 @@ Since `6.0.0`, the transaction extension is not enabled by default. To add the t
 - `SEARCH_PATH`: Postgres search path. Defaults to `"pgstac,public"`
 - `APPLICATION_NAME`: PgSTAC Application name. Defaults to `"pgstac"`
 
+#### Read/Write Split Configuration
+
+The application supports optional read/write split for improved performance and scalability.
+
+**Single Database Mode (default):**
+```bash
+export PGHOST=database.example.com
+# Both read and write operations use the same host
+```
+
+**Read/Write Split Mode:**
+```bash
+export PGHOST=database.example.com         # Required - acts as fallback
+export PGHOST_READER=read-replica.example.com
+export PGHOST_WRITER=primary.example.com
+# Read operations (search, list) use PGHOST_READER
+# Write operations (create, update, delete) use PGHOST_WRITER
+```
+
+**Notes:**
+- `PGHOST` is always required, even when using read/write split
+- If `PGHOST_READER` is not set, reads fall back to `PGHOST`
+- If `PGHOST_WRITER` is not set, writes fall back to `PGHOST`
+- Use `POSTGRES_USER_WRITER` if your writer requires a different username
+
 ##### Deprecated
 
 In version `6.0.0` we've renamed the PG configuration variable to match the official naming convention:
 
 - `POSTGRES_USER` -> `PGUSER`
 - `POSTGRES_PASS` -> `PGPASSWORD`
-- `POSTGRES_HOST_READER` -> `PGHOST`
-- `POSTGRES_HOST_WRITER` -> `PGHOST`*
 - `POSTGRES_PORT` -> `PGPORT`
 - `POSTGRES_DBNAME` -> `PGDATABASE`
-
-\* Since version `6.0`, users cannot set a different host for `writer` and `reader` database but will need to customize the application and pass a specific `stac_fastapi.pgstac.config.PostgresSettings` instance to the `connect_to_db` function.
 
 ### Validation/Serialization
 

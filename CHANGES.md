@@ -30,7 +30,6 @@
 
 ### Changed
 
-- rename `POSTGRES_HOST_READER` to `PGHOST` in config **breaking change**
 - rename `POSTGRES_USER` to `PGUSER` in config **breaking change**
 - rename `POSTGRES_PASS` to `PGPASSWORD` in config **breaking change**
 - rename `POSTGRES_PORT` to `PGPORT` in config **breaking change**
@@ -43,8 +42,6 @@
   settings = PostgresSettings(
       postgres_user="user",
       postgres_pass="password",
-      postgres_host_reader="0.0.0.0",
-      postgres_host_writer="0.0.0.0",
       postgres_port=1111,
       postgres_dbname="pgstac",
   )
@@ -82,9 +79,6 @@
 ### removed
 
 - `stac_fastapi.pgstac.db.DB` class
-- `POSTGRES_HOST_WRITER` in config
-- `writer_connection_string` in `PostgresSettings` class
-- `testing_connection_string` in `PostgresSettings` class
 
 ## [5.0.3] - 2025-07-23
 
