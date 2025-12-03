@@ -11,7 +11,7 @@ on:
       - setup.cfg
       - "**/*.py"
       - .github/workflows/packages.yml
-    workflow_dispatch:
+  workflow_dispatch:
 
 
 jobs:
@@ -22,8 +22,19 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Downcase REPO
+        id: downcase
+        run: |
+            repo_name=${{ github.repository }}
+            echo "repo=${repo_name,,}" >> $GITHUB_OUTPUT
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Get commit short sha
+        id: get-short-sha
+        run: |
+          shortSha=$(git rev-parse --short ${{ github.sha }})
+          echo "commit_short_sha=$shortSha" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -35,11 +46,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (name, tag) for Docker
+      - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5.9.0
         with:
-          images: ghcr.io/stac-utils/stac-fastapi-pgstac
+          images: ghcr.io/${{ steps.downcase.outputs.repo }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6.18.0
@@ -48,5 +59,5 @@ jobs:
           file: Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/${{ steps.downcase.outputs.repo }}:${{ steps.get-short-sha.outputs.commit_short_sha }}
           labels: ${{ steps.meta.outputs.labels }}
