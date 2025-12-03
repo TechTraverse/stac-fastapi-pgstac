@@ -3,10 +3,12 @@ import uuid
 from contextlib import asynccontextmanager
 from copy import deepcopy
 from typing import Callable, Literal
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import Request
 from pydantic import ValidationError
+from stac_fastapi.types.errors import DatabaseError
 from stac_pydantic import Collection, Item
 
 from stac_fastapi.pgstac.config import PostgresSettings
@@ -599,3 +601,148 @@ class TestDbConnect:
         response = await app_client.get("/db-test")
         assert response.status_code == 200
         assert response.json() == "added-config"
+
+
+class TestIAMAuth:
+    """Tests for IAM authentication token generation."""
+
+    @pytest.mark.asyncio
+    async def test_generate_iam_token_success(self):
+        """Test successful IAM token generation."""
+        from stac_fastapi.pgstac.db import generate_iam_token
+
+        mock_token = "mock-iam-token-string"
+        with patch("boto3.client") as mock_boto3_client:
+            mock_rds_client = MagicMock()
+            mock_rds_client.generate_db_auth_token.return_value = mock_token
+            mock_boto3_client.return_value = mock_rds_client
+
+            token = await generate_iam_token(
+                host="db.example.com",
+                port=5432,
+                user="testuser",
+                region="us-east-1",
+            )
+
+            assert token == mock_token
+            mock_rds_client.generate_db_auth_token.assert_called_once_with(
+                DBHostname="db.example.com",
+                Port=5432,
+                DBUsername="testuser",
+                Region="us-east-1",
+            )
+
+    @pytest.mark.asyncio
+    async def test_generate_iam_token_without_region(self):
+        """Test IAM token generation without region (uses boto3 default)."""
+        from stac_fastapi.pgstac.db import generate_iam_token
+
+        mock_token = "mock-iam-token-string"
+        with patch("boto3.client") as mock_boto3_client:
+            mock_rds_client = MagicMock()
+            mock_rds_client.generate_db_auth_token.return_value = mock_token
+            mock_boto3_client.return_value = mock_rds_client
+
+            token = await generate_iam_token(
+                host="db.example.com",
+                port=5432,
+                user="testuser",
+                region=None,
+            )
+
+            assert token == mock_token
+            # Should create client without region_name
+            mock_boto3_client.assert_called_once_with("rds")
+            mock_rds_client.generate_db_auth_token.assert_called_once_with(
+                DBHostname="db.example.com",
+                Port=5432,
+                DBUsername="testuser",
+                Region=None,
+            )
+
+    @pytest.mark.asyncio
+    async def test_generate_iam_token_missing_boto3(self):
+        """Test that ImportError is raised when boto3 is not installed."""
+        from stac_fastapi.pgstac.db import generate_iam_token
+
+        with patch(
+            "builtins.__import__", side_effect=ImportError("No module named 'boto3'")
+        ):
+            with pytest.raises(ImportError, match="boto3 is required"):
+                await generate_iam_token(
+                    host="db.example.com",
+                    port=5432,
+                    user="testuser",
+                    region="us-east-1",
+                )
+
+    @pytest.mark.asyncio
+    async def test_generate_iam_token_boto3_error(self):
+        """Test that DatabaseError is raised when boto3 call fails."""
+        from stac_fastapi.pgstac.db import generate_iam_token
+
+        with patch("boto3.client") as mock_boto3_client:
+            mock_rds_client = MagicMock()
+            mock_rds_client.generate_db_auth_token.side_effect = Exception(
+                "AWS credentials not found"
+            )
+            mock_boto3_client.return_value = mock_rds_client
+
+            with pytest.raises(
+                DatabaseError, match="Failed to generate IAM authentication token"
+            ):
+                await generate_iam_token(
+                    host="db.example.com",
+                    port=5432,
+                    user="testuser",
+                    region="us-east-1",
+                )
+
+    @pytest.mark.asyncio
+    async def test_create_pool_with_iam_auth(self):
+        """Test that pool creation uses IAM auth when enabled."""
+        from stac_fastapi.pgstac.db import _create_pool
+
+        settings = PostgresSettings(
+            pguser="user",
+            pghost="db.example.com",
+            pgport=5432,
+            pgdatabase="pgstac",
+            use_iam_auth=True,
+            aws_region="us-east-1",
+            _env_file=None,
+        )
+
+        mock_token = "mock-token"
+        mock_pool = MagicMock()
+        with patch(
+            "stac_fastapi.pgstac.db.generate_iam_token", new_callable=AsyncMock
+        ) as mock_gen_token:
+            mock_gen_token.return_value = mock_token
+            # Patch asyncpg.create_pool where it's used in the db module
+            with patch(
+                "stac_fastapi.pgstac.db.asyncpg.create_pool", new_callable=AsyncMock
+            ) as mock_create_pool:
+                mock_create_pool.return_value = mock_pool
+
+                _ = await _create_pool(settings)
+
+                # Verify create_pool was called with individual parameters and password callable
+                mock_create_pool.assert_called_once()
+                call_kwargs = mock_create_pool.call_args[1]
+                assert call_kwargs["host"] == "db.example.com"
+                assert call_kwargs["user"] == "user"
+                assert call_kwargs["database"] == "pgstac"
+                assert call_kwargs["ssl"] == "require"
+                assert callable(call_kwargs["password"])  # Should be a callable
+
+                # Verify the password callable generates token
+                password_result = await call_kwargs["password"]()
+                assert password_result == mock_token
+                # Verify generate_iam_token was called with correct parameters
+                mock_gen_token.assert_called_once_with(
+                    host="db.example.com",
+                    port=5432,
+                    user="user",
+                    region="us-east-1",
+                )

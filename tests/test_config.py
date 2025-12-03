@@ -132,3 +132,82 @@ def test_cors_headers(monkeypatch: MonkeyPatch, cors_headers: str) -> None:
         "Content-Type",
         "X-Foo",
     ]
+
+
+def test_postgres_settings_iam_auth_with_region():
+    """Test PostgresSettings with IAM auth enabled and region specified."""
+    settings = PostgresSettings(
+        pguser="user",
+        pghost="db.example.com",
+        pgport=5432,
+        pgdatabase="pgstac",
+        use_iam_auth=True,
+        aws_region="us-east-1",
+        _env_file=None,
+    )
+    assert settings.use_iam_auth is True
+    assert settings.aws_region == "us-east-1"
+    assert settings.pgpassword is None
+
+
+def test_postgres_settings_iam_auth_without_region():
+    """Test PostgresSettings with IAM auth enabled but no region (uses boto3 default)."""
+    settings = PostgresSettings(
+        pguser="user",
+        pghost="db.example.com",
+        pgport=5432,
+        pgdatabase="pgstac",
+        use_iam_auth=True,
+        aws_region=None,
+        _env_file=None,
+    )
+    assert settings.use_iam_auth is True
+    assert settings.aws_region is None
+
+
+def test_postgres_settings_iam_auth_requires_password_or_iam():
+    """Test that either password or IAM auth must be configured."""
+    # Should fail without password and without IAM auth
+    with pytest.raises(ValidationError):
+        PostgresSettings(
+            pguser="user",
+            pghost="db.example.com",
+            pgport=5432,
+            pgdatabase="pgstac",
+            pgpassword=None,
+            use_iam_auth=False,
+            _env_file=None,
+        )
+
+
+def test_postgres_settings_connection_string_with_iam_auth():
+    """Test that connection_string raises error when IAM auth is enabled."""
+    settings = PostgresSettings(
+        pguser="user",
+        pghost="db.example.com",
+        pgport=5432,
+        pgdatabase="pgstac",
+        use_iam_auth=True,
+        aws_region="us-east-1",
+        _env_file=None,
+    )
+    with pytest.raises(ValueError, match="Cannot use connection_string when IAM"):
+        _ = settings.connection_string
+
+
+def test_postgres_settings_iam_auth_with_password_still_works():
+    """Test that IAM auth can be enabled even if password is set (password is ignored)."""
+    settings = PostgresSettings(
+        pguser="user",
+        pgpassword="password",
+        pghost="db.example.com",
+        pgport=5432,
+        pgdatabase="pgstac",
+        use_iam_auth=True,
+        aws_region="us-east-1",
+        _env_file=None,
+    )
+    assert settings.use_iam_auth is True
+    assert settings.aws_region == "us-east-1"
+    # Password can still be set but won't be used
+    assert settings.pgpassword == "password"

@@ -46,17 +46,86 @@ async def con_init(conn):
 ConnectionGetter = Callable[[Request, Literal["r", "w"]], AsyncIterator[Connection]]
 
 
+async def generate_iam_token(
+    host: str, port: int, user: str, region: Optional[str] = None
+) -> str:
+    """Generate AWS RDS IAM authentication token.
+
+    Args:
+        host: Database hostname.
+        port: Database port.
+        user: Database username.
+        region: AWS region where the database is located. If None, uses the
+            boto3 client's default region.
+
+    Returns:
+        IAM authentication token string.
+
+    Raises:
+        ImportError: If boto3 is not installed.
+        Exception: If token generation fails (missing credentials, invalid region, etc.).
+    """
+    try:
+        import boto3
+    except ImportError as e:
+        raise ImportError(
+            "boto3 is required for IAM authentication. "
+            "Install it with: pip install boto3"
+        ) from e
+
+    try:
+        # If region is provided, use it; otherwise boto3 will use its default region
+        rds_client = (
+            boto3.client("rds", region_name=region) if region else boto3.client("rds")
+        )
+        # Region parameter is optional - if None, uses the client's region
+        token = rds_client.generate_db_auth_token(
+            DBHostname=host, Port=port, DBUsername=user, Region=region
+        )
+        return token
+    except Exception as e:
+        raise DatabaseError(f"Failed to generate IAM authentication token: {e}") from e
+
+
 async def _create_pool(settings: PostgresSettings) -> Pool:
     """Create a connection pool."""
-    return await asyncpg.create_pool(
-        settings.connection_string,
-        min_size=settings.db_min_conn_size,
-        max_size=settings.db_max_conn_size,
-        max_queries=settings.db_max_queries,
-        max_inactive_connection_lifetime=settings.db_max_inactive_conn_lifetime,
-        init=con_init,
-        server_settings=settings.server_settings.model_dump(),
-    )
+    if settings.use_iam_auth:
+        # Create password callable for IAM token generation
+        async def password_callable() -> str:
+            return await generate_iam_token(
+                host=settings.pghost,
+                port=settings.pgport,
+                user=settings.pguser,
+                region=settings.aws_region,
+            )
+
+        # Use individual parameters with password callable for IAM auth
+        # SSL is required for IAM authentication
+        return await asyncpg.create_pool(
+            host=settings.pghost,
+            port=settings.pgport,
+            user=settings.pguser,
+            database=settings.pgdatabase,
+            password=password_callable,
+            min_size=settings.db_min_conn_size,
+            max_size=settings.db_max_conn_size,
+            max_queries=settings.db_max_queries,
+            max_inactive_connection_lifetime=settings.db_max_inactive_conn_lifetime,
+            init=con_init,
+            server_settings=settings.server_settings.model_dump(),
+            ssl="require",  # SSL is required for IAM authentication
+        )
+    else:
+        # Use connection string for traditional password authentication
+        return await asyncpg.create_pool(
+            settings.connection_string,
+            min_size=settings.db_min_conn_size,
+            max_size=settings.db_max_conn_size,
+            max_queries=settings.db_max_queries,
+            max_inactive_connection_lifetime=settings.db_max_inactive_conn_lifetime,
+            init=con_init,
+            server_settings=settings.server_settings.model_dump(),
+        )
 
 
 async def connect_to_db(

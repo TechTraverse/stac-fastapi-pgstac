@@ -56,10 +56,14 @@ class PostgresSettings(BaseSettings):
 
     Attributes:
         pguser: postgres username.
-        pgpassword: postgres password.
+        pgpassword: postgres password. Optional if use_iam_auth is enabled.
         pghost: hostname for the connection.
         pgport: database port.
         pgdatabase: database name.
+        use_iam_auth: Enable AWS RDS IAM token authentication. Defaults to False.
+        aws_region: AWS region for IAM token generation. Optional - if not provided,
+            boto3 will use its default region (from AWS_DEFAULT_REGION, AWS_REGION env var,
+            or instance metadata).
 
     """
 
@@ -105,10 +109,13 @@ class PostgresSettings(BaseSettings):
     ]
 
     pguser: str
-    pgpassword: str
+    pgpassword: Optional[str] = None
     pghost: str
     pgport: int
     pgdatabase: str
+
+    use_iam_auth: bool = False
+    aws_region: Optional[str] = None
 
     db_min_conn_size: int = 1
     db_max_conn_size: int = 10
@@ -151,9 +158,26 @@ class PostgresSettings(BaseSettings):
 
         return data
 
+    @model_validator(mode="after")
+    def validate_auth_config(self) -> Self:
+        """Validate that either password or IAM auth is configured."""
+        if not self.use_iam_auth:
+            if not self.pgpassword:
+                raise ValueError(
+                    "Either `pgpassword` must be provided or `use_iam_auth` must be enabled"
+                )
+        return self
+
     @property
     def connection_string(self):
         """Create reader psql connection string."""
+        if self.use_iam_auth:
+            raise ValueError(
+                "Cannot use connection_string when IAM authentication is enabled. "
+                "Use individual connection parameters instead."
+            )
+        if not self.pgpassword:
+            raise ValueError("pgpassword is required for connection_string")
         return f"postgresql://{self.pguser}:{quote(self.pgpassword)}@{self.pghost}:{self.pgport}/{self.pgdatabase}"
 
 
