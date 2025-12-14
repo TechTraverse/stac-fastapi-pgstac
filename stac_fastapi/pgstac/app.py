@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from brotli_asgi import BrotliMiddleware
 from fastapi import APIRouter, FastAPI
 from stac_fastapi.api.app import StacApi
-from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
+from stac_fastapi.api.middleware import CORSMiddleware
 from stac_fastapi.api.models import (
     EmptyRequest,
     ItemCollectionUri,
@@ -182,7 +182,7 @@ api = StacApi(
     collections_get_request_model=collections_get_request_model,
     middlewares=[
         Middleware(BrotliMiddleware),
-        Middleware(ProxyHeaderMiddleware),
+        # Middleware(ProxyHeaderMiddleware),
         Middleware(
             ProxyHostMiddleware,
             proxy_scheme=settings.proxy_scheme,
