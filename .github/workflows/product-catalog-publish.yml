@@ -1,0 +1,49 @@
+name: Publish Container
+
+on:
+  push:
+    branches:
+      - nccf-product-catalog-stac-api
+
+jobs:
+  docker-build-push:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Downcase repository owner
+        id: downcase-owner
+        run: |
+          owner_name=${{ github.repository_owner }}
+          echo "owner=${owner_name,,}" >> $GITHUB_OUTPUT
+
+      - name: Get commit short sha
+        id: get-short-sha
+        run: |
+          shortSha=$(git rev-parse --short ${{ github.sha }})
+          echo "commit_short_sha=$shortSha" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ghcr.io/${{ steps.downcase-owner.outputs.owner }}/nccf-product-catalog-stac-api:${{ steps.get-short-sha.outputs.commit_short_sha }}

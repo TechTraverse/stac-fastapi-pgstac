@@ -1,9 +1,9 @@
 name: stac-fastapi
 on:
   push:
-    branches: [main]
+    branches: [main, nccf-product-catalog-stac-api]
   pull_request:
-    branches: [main]
+    branches: [main, nccf-product-catalog-stac-api]
   workflow_dispatch:
 
 env:
