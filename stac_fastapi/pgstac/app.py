@@ -43,6 +43,7 @@ from stac_fastapi.pgstac.core import CoreCrudClient, health_check
 from stac_fastapi.pgstac.db import close_db_connection, connect_to_db
 from stac_fastapi.pgstac.extensions import FreeTextExtension, QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
+from stac_fastapi.pgstac.middleware import ProxyHostMiddleware
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
 
@@ -182,6 +183,11 @@ api = StacApi(
     middlewares=[
         Middleware(BrotliMiddleware),
         Middleware(ProxyHeaderMiddleware),
+        Middleware(
+            ProxyHostMiddleware,
+            proxy_scheme=settings.proxy_scheme,
+            proxy_host=settings.proxy_host,
+        ),
         Middleware(
             CORSMiddleware,
             allow_origins=settings.cors_origins,

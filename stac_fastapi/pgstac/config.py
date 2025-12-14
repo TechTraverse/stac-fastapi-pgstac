@@ -244,6 +244,9 @@ class Settings(ApiSettings):
         "Content-Type",
     )
 
+    proxy_scheme: Optional[str] = None
+    proxy_host: Optional[str] = None
+
     testing: bool = False
 
     @model_validator(mode="after")
