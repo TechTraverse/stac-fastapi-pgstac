@@ -46,4 +46,6 @@ jobs:
           file: Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/${{ steps.downcase-owner.outputs.owner }}/nccf-product-catalog-stac-api:${{ steps.get-short-sha.outputs.commit_short_sha }}
+          tags: |
+            ghcr.io/${{ steps.downcase-owner.outputs.owner }}/nccf-stac-fastapi-pgstac:latest
+            ghcr.io/${{ steps.downcase-owner.outputs.owner }}/nccf-stac-fastapi-pgstac:${{ steps.get-short-sha.outputs.commit_short_sha }}
