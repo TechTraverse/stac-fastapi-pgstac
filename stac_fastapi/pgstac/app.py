@@ -162,7 +162,7 @@ async def lifespan(app: FastAPI):
 api = StacApi(
     app=FastAPI(
         openapi_url=settings.openapi_url,
-        docs_url=settings.docs_url,
+        docs_url=settings.prefix_path + settings.docs_url,
         redoc_url=None,
         root_path=settings.root_path,
         title=settings.stac_fastapi_title,
