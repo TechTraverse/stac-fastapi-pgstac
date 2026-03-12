@@ -1,6 +1,8 @@
+import json
 from typing import Optional
 
 from starlette.datastructures import MutableHeaders
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 
@@ -24,3 +26,25 @@ class ProxyHostMiddleware:
                 headers["host"] = self.proxy_host
 
         return await self.app(scope, receive, send)
+
+
+class FixAPILinksMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, settings):
+        super().__init__(app)
+        self.settings = settings
+
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+
+        if request.url.path == "/":
+            data = json.loads(response.body)
+
+            for link in data.get("links", []):
+                if link["rel"] == "service-desc":
+                    link["href"] = f"{self.settings.prefix_path}{request.app.openapi_url}"
+                if link["rel"] == "service-doc":
+                    link["href"] = f"{self.settings.prefix_path}{request.app.docs_url}"
+
+            response.body = json.dumps(data).encode()
+
+        return response
