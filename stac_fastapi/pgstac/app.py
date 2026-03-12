@@ -43,7 +43,7 @@ from stac_fastapi.pgstac.core import CoreCrudClient, health_check
 from stac_fastapi.pgstac.db import close_db_connection, connect_to_db
 from stac_fastapi.pgstac.extensions import FreeTextExtension, QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
-from stac_fastapi.pgstac.middleware import FixAPILinksMiddleware, ProxyHostMiddleware
+from stac_fastapi.pgstac.middleware import ProxyHostMiddleware
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
 
@@ -165,7 +165,7 @@ api = StacApi(
         openapi_url=settings.openapi_url,
         docs_url=settings.docs_url,
         redoc_url=None,
-        root_path=settings.root_path,
+        root_path=settings.prefix_path,
         title=settings.stac_fastapi_title,
         version=settings.stac_fastapi_version,
         description=settings.stac_fastapi_description,
@@ -195,10 +195,6 @@ api = StacApi(
             allow_methods=settings.cors_methods,
             allow_credentials=settings.cors_credentials,
             allow_headers=settings.cors_headers,
-        ),
-        Middleware(
-            FixAPILinksMiddleware,
-            settings=settings,
         ),
     ],
     health_check=health_check,
