@@ -208,11 +208,11 @@ app = api.app
 async def prefixed_openapi():
     return JSONResponse(app.openaoi())
 
+
 @app.get(f"{settings.prefix_path}/api.html", include_in_schema=False)
 async def prefixed_swagger():
     return get_swagger_ui_html(
-        openapi_url=f"{settings.prefix_path}/api",
-        title="API docs"
+        openapi_url=f"{settings.prefix_path}/api", title="API docs"
     )
 
 
@@ -222,6 +222,7 @@ for route in app.routes:
     if route.name == "landing_page":
         original_landing_page = route.endpoint
         break
+
 
 @app.get(f"{settings.prefix_path}/", include_in_schema=False)
 async def landing_page_with_fixed_links(request: Request):
