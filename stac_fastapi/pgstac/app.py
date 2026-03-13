@@ -206,7 +206,7 @@ app = api.app
 
 @app.get(f"{settings.prefix_path}/api", include_in_schema=False)
 async def prefixed_openapi():
-    return JSONResponse(app.openaoi())
+    return JSONResponse(app.openapi())
 
 
 @app.get(f"{settings.prefix_path}/api.html", include_in_schema=False)
@@ -217,9 +217,7 @@ async def prefixed_swagger():
 
 
 for route in app.routes:
-    print("PPAAAAATTTTTYYYYYYY")
-    print(route.name)
-    if route.name == "landing_page":
+    if route.name == "Landing Page":
         original_landing_page = route.endpoint
         break
 
