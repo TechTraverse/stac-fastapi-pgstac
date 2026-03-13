@@ -219,6 +219,7 @@ async def prefixed_swagger():
 for route in app.routes:
     if route.name == "Landing Page":
         original_landing_page = route.endpoint
+        print(original_landing_page)
         break
 
 
@@ -230,6 +231,7 @@ async def landing_page_with_fixed_links(request: Request):
     data = json.loads(body)
 
     for link in data.get("links", []):
+        print(link)
         if link.get("rel") == "service-desc":
             link["href"] = f"{settings.prefix_path}{request.app.openapi_url}"
         elif link.get("rel") == "service-doc":
