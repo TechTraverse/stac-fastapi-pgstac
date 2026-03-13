@@ -5,11 +5,12 @@ the ENABLED_EXTENSIONS environment variable (e.g. `transactions,sort,query`).
 If the variable is not set, enables all extensions.
 """
 
+import json
 import os
 from contextlib import asynccontextmanager
 
 from brotli_asgi import BrotliMiddleware
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, Request
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import CORSMiddleware
 from stac_fastapi.api.models import (
@@ -200,6 +201,26 @@ api = StacApi(
     health_check=health_check,
 )
 app = api.app
+
+
+landing_path = settings.prefix_path + "/"
+
+landing_route = next(r for r in app.routes if r.path == landing_path)
+original_endpoint = landing_route.endpoint
+
+
+@app.get(landing_path, include_in_schemas=False)
+async def landing_page_with_fixed_links(request: Request):
+    response = await original_endpoint(request)
+
+    body = await response.body()
+    landing_page = json.loads(body)
+
+    for link in landing_page.get("links", []):
+        if link.get("rel") == "service-desc":
+            link["href"] = f"{settings.prefix_path}{request.app.openapi_url}"
+        elif link.get("rel") == "service-doc":
+            link["href"] = f"{settings.prefix_path}{request.app.docs_url}"
 
 
 def run():
