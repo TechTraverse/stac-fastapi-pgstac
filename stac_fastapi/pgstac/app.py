@@ -10,7 +10,7 @@ import os
 from contextlib import asynccontextmanager
 
 from brotli_asgi import BrotliMiddleware
-from fastapi import APIRouter, FastAPI, Request
+from fastapi import APIRouter, FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse
 from stac_fastapi.api.app import StacApi
@@ -217,28 +217,26 @@ async def prefixed_swagger():
 
 
 for route in app.routes:
-    if route.name == "Landing Page":
-        original_landing_page = route.endpoint
+    if route.path == f"{settings.prefix_path}/":
+        original_endpoint = route.endpoint
+
+        async def patched_landing_page(request, original_endpoint=original_endpoint):
+            response = await original_endpoint(request)
+
+            body = await response.body()
+            data = json.loads(body)
+
+            for link in data.get("links", []):
+                print(link)
+                if link.get("rel") == "service-desc":
+                    link["href"] = f"{settings.prefix_path}{request.app.openapi_url}"
+                elif link.get("rel") == "service-doc":
+                    link["href"] = f"{settings.prefix_path}{request.app.docs_url}"
+
+            return JSONResponse(data)
+
+        route.endpoint = patched_landing_page
         break
-
-
-@app.get(f"{settings.prefix_path}/", include_in_schema=False)
-async def landing_page_with_fixed_links(request: Request):
-    response = await original_landing_page(request)
-    print(response)
-
-    body = await response.body()
-    data = json.loads(body)
-    print(data)
-
-    for link in data.get("links", []):
-        print(link)
-        if link.get("rel") == "service-desc":
-            link["href"] = f"{settings.prefix_path}{request.app.openapi_url}"
-        elif link.get("rel") == "service-doc":
-            link["href"] = f"{settings.prefix_path}{request.app.docs_url}"
-
-    return JSONResponse(data)
 
 
 def run():
