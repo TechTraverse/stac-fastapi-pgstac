@@ -222,6 +222,8 @@ async def landing_page_with_fixed_links(request: Request):
         elif link.get("rel") == "service-doc":
             link["href"] = f"{settings.prefix_path}{request.app.docs_url}"
 
+    return JSONResponse(content=landing_page)
+
 
 def run():
     """Run app from command line using uvicorn if available."""
