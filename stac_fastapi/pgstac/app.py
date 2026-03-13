@@ -5,7 +5,6 @@ the ENABLED_EXTENSIONS environment variable (e.g. `transactions,sort,query`).
 If the variable is not set, enables all extensions.
 """
 
-import json
 import os
 from contextlib import asynccontextmanager
 
@@ -214,6 +213,7 @@ async def prefixed_swagger():
     return get_swagger_ui_html(
         openapi_url=f"{settings.prefix_path}/api", title="API docs"
     )
+
 
 for route in api.app.routes:
     print(route.path, route.name, route.endpoint)
