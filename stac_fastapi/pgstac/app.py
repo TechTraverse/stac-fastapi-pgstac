@@ -209,7 +209,7 @@ landing_route = next(r for r in app.routes if r.path == landing_path)
 original_endpoint = landing_route.endpoint
 
 
-@app.get(landing_path, include_in_schemas=False)
+@app.get(landing_path, include_in_schema=False)
 async def landing_page_with_fixed_links(request: Request):
     response = await original_endpoint(request)
 
