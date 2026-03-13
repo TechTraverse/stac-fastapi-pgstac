@@ -12,12 +12,12 @@ from contextlib import asynccontextmanager
 from brotli_asgi import BrotliMiddleware
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import JSONResponse
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import CORSMiddleware
 from stac_fastapi.api.models import (
     EmptyRequest,
     ItemCollectionUri,
-    JSONResponse,
     create_get_request_model,
     create_post_request_model,
     create_request_model,
@@ -219,16 +219,17 @@ async def prefixed_swagger():
 for route in app.routes:
     if route.name == "Landing Page":
         original_landing_page = route.endpoint
-        print(original_landing_page)
         break
 
 
 @app.get(f"{settings.prefix_path}/", include_in_schema=False)
 async def landing_page_with_fixed_links(request: Request):
     response = await original_landing_page(request)
+    print(response)
 
     body = await response.body()
     data = json.loads(body)
+    print(data)
 
     for link in data.get("links", []):
         print(link)
