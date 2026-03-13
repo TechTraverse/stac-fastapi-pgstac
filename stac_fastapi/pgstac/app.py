@@ -215,28 +215,29 @@ async def prefixed_swagger():
         openapi_url=f"{settings.prefix_path}/api", title="API docs"
     )
 
+for route in api.app.routes:
+    print(route.path, route.name, route.endpoint)
+# for route in app.routes:
+#     if route.path == f"{settings.prefix_path}/":
+#         original_endpoint = route.endpoint
 
-for route in app.routes:
-    if route.path == f"{settings.prefix_path}/":
-        original_endpoint = route.endpoint
+#         async def patched_landing_page(request, original_endpoint=original_endpoint):
+#             response = await original_endpoint(request)
 
-        async def patched_landing_page(request, original_endpoint=original_endpoint):
-            response = await original_endpoint(request)
+#             body = await response.body()
+#             data = json.loads(body)
 
-            body = await response.body()
-            data = json.loads(body)
+#             for link in data.get("links", []):
+#                 print(link)
+#                 if link.get("rel") == "service-desc":
+#                     link["href"] = f"{settings.prefix_path}{request.app.openapi_url}"
+#                 elif link.get("rel") == "service-doc":
+#                     link["href"] = f"{settings.prefix_path}{request.app.docs_url}"
 
-            for link in data.get("links", []):
-                print(link)
-                if link.get("rel") == "service-desc":
-                    link["href"] = f"{settings.prefix_path}{request.app.openapi_url}"
-                elif link.get("rel") == "service-doc":
-                    link["href"] = f"{settings.prefix_path}{request.app.docs_url}"
+#             return JSONResponse(data)
 
-            return JSONResponse(data)
-
-        route.endpoint = patched_landing_page
-        break
+#         route.endpoint = patched_landing_page
+#         break
 
 
 def run():
