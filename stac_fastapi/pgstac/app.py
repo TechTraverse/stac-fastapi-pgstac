@@ -5,6 +5,7 @@ the ENABLED_EXTENSIONS environment variable (e.g. `transactions,sort,query`).
 If the variable is not set, enables all extensions.
 """
 
+import json
 import os
 from contextlib import asynccontextmanager
 
@@ -215,29 +216,30 @@ async def prefixed_swagger():
     )
 
 
-for route in api.app.routes:
-    print(route.path, route.name, route.endpoint)
-# for route in app.routes:
-#     if route.path == f"{settings.prefix_path}/":
-#         original_endpoint = route.endpoint
+for route in app.routes:
+    if route.path == f"{settings.prefix_path}/":
+        print("PATCHING LANDING PAGE")
+        original_endpoint = route.endpoint
 
-#         async def patched_landing_page(request, original_endpoint=original_endpoint):
-#             response = await original_endpoint(request)
+        async def patched_landing_page(request, original_endpoint=original_endpoint):
+            print("STARTING PATCH")
+            response = await original_endpoint(request)
 
-#             body = await response.body()
-#             data = json.loads(body)
+            body = await response.body()
+            data = json.loads(body)
 
-#             for link in data.get("links", []):
-#                 print(link)
-#                 if link.get("rel") == "service-desc":
-#                     link["href"] = f"{settings.prefix_path}{request.app.openapi_url}"
-#                 elif link.get("rel") == "service-doc":
-#                     link["href"] = f"{settings.prefix_path}{request.app.docs_url}"
+            for link in data.get("links", []):
+                print(link)
+                if link.get("rel") == "service-desc":
+                    link["href"] = f"{settings.prefix_path}{request.app.openapi_url}"
+                elif link.get("rel") == "service-doc":
+                    link["href"] = f"{settings.prefix_path}{request.app.docs_url}"
 
-#             return JSONResponse(data)
+            return JSONResponse(data)
 
-#         route.endpoint = patched_landing_page
-#         break
+        route.endpoint = patched_landing_page
+        route.app = route.get_route_handler()
+        break
 
 
 def run():
