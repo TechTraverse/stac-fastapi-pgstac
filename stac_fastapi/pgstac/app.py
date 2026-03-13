@@ -5,7 +5,6 @@ the ENABLED_EXTENSIONS environment variable (e.g. `transactions,sort,query`).
 If the variable is not set, enables all extensions.
 """
 
-import json
 import os
 from contextlib import asynccontextmanager
 
@@ -164,8 +163,8 @@ async def lifespan(app: FastAPI):
 
 api = StacApi(
     app=FastAPI(
-        openapi_url=settings.openapi_url,
-        docs_url=settings.docs_url,
+        openapi_url=settings.prefix_path + settings.openapi_url,
+        docs_url=settings.prefix_path + settings.docs_url,
         redoc_url=None,
         root_path=settings.root_path,
         title=settings.stac_fastapi_title,
@@ -214,32 +213,6 @@ async def prefixed_swagger():
     return get_swagger_ui_html(
         openapi_url=f"{settings.prefix_path}/api", title="API docs"
     )
-
-
-for route in app.routes:
-    if route.path == f"{settings.prefix_path}/":
-        print("PATCHING LANDING PAGE")
-        original_endpoint = route.endpoint
-
-        async def patched_landing_page(request, original_endpoint=original_endpoint):
-            print("STARTING PATCH")
-            response = await original_endpoint(request)
-
-            body = await response.body()
-            data = json.loads(body)
-
-            for link in data.get("links", []):
-                print(link)
-                if link.get("rel") == "service-desc":
-                    link["href"] = f"{settings.prefix_path}{request.app.openapi_url}"
-                elif link.get("rel") == "service-doc":
-                    link["href"] = f"{settings.prefix_path}{request.app.docs_url}"
-
-            return JSONResponse(data)
-
-        route.endpoint = patched_landing_page
-        route.app = route.get_route_handler()
-        break
 
 
 def run():
